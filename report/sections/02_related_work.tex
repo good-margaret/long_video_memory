@@ -1,0 +1,43 @@
+\section{Related work}\label{sec:related}
+
+\paragraph{Long-video understanding.}
+Benchmarks such as EgoSchema~\citep{mangalam2023egoschema},
+Video-MME~\citep{fu2024videomme} and LongVideoBench~\citep{wu2024longvideobench}
+show that accuracy of multimodal models degrades as videos grow longer and
+that many questions require information spread over long temporal spans.
+Architectural responses compress the visual token stream inside the model:
+MovieChat~\citep{song2024moviechat} consolidates similar frame tokens into a
+short- and long-term memory, and MA-LMM~\citep{he2024malmm} maintains a memory
+bank of past visual features that is updated online. These memories are
+\emph{implicit} (feature tensors) and part of a trained model; they cannot be
+inspected record by record, and their contents carry no explicit timestamps.
+
+\paragraph{Explicit memory for language agents.}
+Retrieval-augmented generation~\citep{lewis2020rag} answers questions from an
+external store queried at inference time. Generative
+Agents~\citep{park2023generative} keep a natural-language memory stream scored
+by recency, importance and relevance, and periodically write higher-level
+reflections; MemGPT~\citep{packer2023memgpt} treats the context window as a
+small main memory backed by external storage, with explicit operations for
+moving information between the two. These systems motivate explicit,
+inspectable records with salience-based eviction and summarisation, which this
+project adopts, but they were designed for dialogue rather than for
+perceptual streams in which the same physical object recurs and changes state.
+
+\paragraph{Positioning.}
+This project studies an \emph{explicit, structured, budgeted} memory for a
+perceptual stream, with three properties not jointly present in the work
+above: (i)~typed records for entities, events, state changes and relations;
+(ii)~provenance from every record to source time intervals, preserved through
+merging and compression, so that grounding can be measured; and (iii)~a
+controlled comparison against simpler organisations under an identical budget
+and identical observations. The emphasis is analytical: which information
+survives, which mechanism is responsible for which gain, and where errors
+originate.
+
+\paragraph{Speech recognition.}
+Transcripts are produced with Whisper~\citep{radford2023whisper} through the
+CTranslate2-based faster-whisper implementation~\citep{fasterwhisper}. Whisper
+is known to emit fluent but non-existent text on silence and non-speech
+audio~\citep{koenecke2024careless}; the preprocessing choices
+in \cref{sec:asr} are aimed at that failure mode.

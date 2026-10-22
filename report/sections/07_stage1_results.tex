@@ -1,0 +1,26 @@
+\section{Stage 1 results: data}\label{sec:stage1-results}
+
+This section is filled automatically. After the steps of \cref{sec:stage1}
+have been run on the selected video, \cmd{memvid export-tex} writes the tables
+below from the manifest; until then, placeholders are shown. The numbers are
+never typed by hand.
+
+\subsection{Selected video}
+\textit{Describe the selected video here: title, source and licence, genre,
+duration, why it was chosen (recurring entities, state changes, speech), and
+any candidates that were rejected and why.}
+
+\subsection{Preprocessing}
+\generated{stage1_results.tex}{preprocessing statistics, produced by
+\cmd{memvid preprocess} and \cmd{memvid export-tex}.}
+
+\paragraph{Checklist for interpreting the table.}
+\begin{itemize}[nosep]
+  \item \emph{Speech coverage} and the \emph{longest gap without speech} show
+        how much of the video carries information only visually; they bound
+        how useful speech-only facts can be.
+  \item \emph{Suspicious segments} are candidates for hallucinated text; any
+        that reach the memory should be discussed.
+  \item The \emph{maximum frame timing error} must be below one frame period;
+        a larger value indicates a decoding problem.
+\end{itemize}

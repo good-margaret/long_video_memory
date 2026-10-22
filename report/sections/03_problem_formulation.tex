@@ -1,0 +1,109 @@
+\section{Problem formulation}\label{sec:formulation}
+
+\paragraph{Video and chunks.}
+Let $V$ be a video of duration $T$ seconds. It is partitioned into $n$
+consecutive chunks $c_i=[u_i,v_i)$, $i=1,\dots,n$, with $u_1=0$, $v_n=T$ and
+$v_i=u_{i+1}$ (the construction is given in \cref{sec:chunking}).
+
+\paragraph{Perception.}
+A fixed perception function $\phi$ maps each chunk, through its sampled frames
+and the transcript segments attached to it, to an observation
+$o_i=\phi(c_i)$. The function $\phi$ is \emph{memory-agnostic}: $o_i$ depends
+on $c_i$ only, not on any memory state. The observations
+$o_{1:n}$ are computed once and frozen.
+
+\paragraph{Memory.}
+A memory organisation is a pair $(U,R)$ of an update rule and a retrieval rule.
+Starting from $M_0=\varnothing$, the update rule produces
+\begin{equation}
+  M_i = U(M_{i-1}, o_i), \qquad i=1,\dots,n,
+\end{equation}
+subject to the budget constraint
+\begin{equation}\label{eq:budget}
+  \toklen{M_i} \le B \quad\text{for all } i,
+  \qquad \toklen{M} := \bigl|\tau\bigl(\sigma(M)\bigr)\bigr|,
+\end{equation}
+where $\sigma$ serialises the memory to text and $\tau$ is the tokenizer of
+the answering model. Measuring the budget in answerer tokens makes it the
+quantity that actually constrains answering, and makes budgets comparable
+across organisations with different record formats.
+
+\paragraph{Provenance.}
+Every record $r\in M$ carries a provenance set $\pi(r)\subseteq\{1,\dots,n\}$
+of the chunks it was derived from. The update rule must preserve provenance:
+a record created by merging or compressing records $r_1,\dots,r_k$ receives
+$\pi=\bigcup_j\pi(r_j)$. The time support of a set of records $C$ is
+\begin{equation}
+  I(C) = \bigcup_{r\in C}\;\bigcup_{i\in\pi(r)} [u_i,v_i).
+\end{equation}
+
+\paragraph{Answering.}
+For a question $q$, the retrieval rule selects $R(q,M_n)\subseteq M_n$ with
+$\toklen{R(q,M_n)}\le B_R$ (the one exception is C1, whose memory is a single
+summary of size at most $B$ that is always given whole). A fixed answering model
+$A$ returns an answer and the
+subset of retrieved records it cites: $(\hat a,\,C)=A\bigl(q,R(q,M_n)\bigr)$,
+$C\subseteq R(q,M_n)$. The answerer has no access to the video.
+
+\paragraph{Questions.}
+Each question $q$ in the evaluation set $\mathcal Q$ has a reference answer
+$a^\ast(q)$, a type $\kappa(q)$ (past event, object change, cross-segment
+relation, attribute recall, speech-grounded), ground-truth evidence intervals
+$G(q)$, and an evidence time $e(q)$ (the latest moment needed to answer). Its
+\emph{evidence age} is $\age(q)=T-e(q)$: the time elapsed between the evidence
+and the end of the video, i.e.\ how long the memory had to retain it.
+
+\paragraph{Evaluation quantities.}
+For organisation $m$ at budget $B$:
+\begin{align}
+  y_m(q) &= \ind\bigl[\hat a \text{ is correct for } a^\ast(q)\bigr], &
+  \Acc_m(B) &= \tfrac{1}{|\mathcal Q|}\textstyle\sum_{q} y_m(q),\\
+  g_m(q) &= \ind\bigl[I(C)\cap G(q)\neq\varnothing\bigr], &
+  \mathrm{tIoU}_m(q) &= \frac{|I(C)\cap G(q)|}{|I(C)\cup G(q)|},\\
+  p_m(q) &= \frac{|I(C)\cap G(q)|}{|I(C)|}, &&
+\end{align}
+where $|\cdot|$ of a union of intervals is its total length and $p_m(q)=0$ when
+nothing is cited. Grounding $g$ alone rewards citing records with long support
+(an entity seen throughout the video overlaps every interval); the
+\emph{grounding precision} $p$ and tIoU penalise it. Retrieval recall is $g$
+computed with $R(q,M_n)$ in place of $C$. \emph{Evidence coverage}, used as a
+proxy for fact survival, is $g$ computed with the non-entity records of $M_n$ in
+place of $C$: some event, state change, relation or note derived from the
+evidence chunks is still stored. It is a proxy because it shows that material
+from those chunks survives, not that the specific fact does; the failure
+attribution (\cref{sec:attribution}) checks the latter by hand.
+
+\paragraph{Controlled comparison.}
+The organisations compared later (\cref{tab:conditions}) differ only in
+$(U,R)$. The quantities $\phi$, $o_{1:n}$, $\tau$, $B$, $B_R$ and $A$ are
+shared. This is the formal content of the requirement that comparisons use
+``the same observations and a similar memory budget''.
+
+\begin{table}[ht]
+\centering\small
+\caption{Memory organisations to be compared (Stage~5). All share the
+observations, the answerer and the retrieval allowance $B_R$.}
+\label{tab:conditions}
+\begin{tabularx}{\linewidth}{@{}llX@{}}
+\toprule
+ID & Organisation & Description \\
+\midrule
+C1 & Rolling summary & One text record, rewritten after each chunk under
+  budget $B$; the whole summary is given to the answerer. \\
+C2 & Flat log (FIFO) & One text record per observation; oldest evicted when
+  over budget; embedding retrieval. \\
+C3 & Structured memory & Typed records (entities, events, state changes,
+  relations), entity resolution, compression, salience-based deletion;
+  hybrid retrieval. \\
+C4 & Unbounded flat log & C2 without eviction: an upper bound for the given
+  perception. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{A consequence for grounding.}
+For C1 the memory is a single record whose provenance is every chunk seen so
+far, so $I(C)$ covers most of the video and $g_{\mathrm{C1}}\approx 1$
+trivially, and coverage is equally uninformative. Grounding, coverage and failure
+attribution are therefore reported only for C2--C4; for C1 answer accuracy is
+reported, overall, per question type and against evidence age.

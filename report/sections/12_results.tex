@@ -1,0 +1,35 @@
+\section{Results}\label{sec:results}
+
+All tables and figures in this section are produced by \cmd{memvid analyze}
+from the run outputs; none is typed by hand. Until the analysis has been run,
+placeholders are shown.
+
+\newcommand{\genfig}[3]{\IfFileExists{figures/#1.pdf}{%
+  \begin{figure}[ht]\centering\includegraphics[width=#2\linewidth]{figures/#1.pdf}%
+  \caption{#3}\label{fig:#1}\end{figure}}{\pending{figure \texttt{\detokenize{#1}} (produced by \cmd{memvid analyze})}}}
+
+\subsection{Accuracy and organisation (RQ1)}
+\generated{results_accuracy.tex}{accuracy table}
+\genfig{accuracy_vs_budget}{0.7}{Accuracy against the memory budget; the band is the 95\% interval of the unbounded log C4.}
+\generated{results_by_type.tex}{accuracy by question type}
+\genfig{accuracy_by_type}{0.8}{Accuracy by question type at the ablation budget.}
+\generated{results_mcnemar.tex}{paired comparisons}
+
+\subsection{What is kept and lost (RQ2)}
+\genfig{retention}{0.7}{Accuracy against evidence age (quartiles of age).}
+\genfig{memory_size}{0.7}{Memory size over the video; the dashed line is the budget.}
+
+\subsection{Updating, retrieval and grounding (RQ3, RQ4)}
+\generated{results_operations.tex}{operation counts per run}
+\generated{results_grounding.tex}{survival, retrieval and grounding}
+\generated{results_ablations.tex}{ablations}
+\generated{audit_stats.tex}{audit results}
+
+\subsection{Where answers fail}
+\generated{results_attribution.tex}{failure attribution}
+\genfig{attribution}{0.8}{Wrong answers by the first stage where the evidence was lost.}
+
+\paragraph{Case studies.}
+\textit{Trace one success and two failures through the operation log (the demo
+shows the operations per chunk): where the evidence entered the memory, which
+operation changed or removed it, and what the answerer saw.}

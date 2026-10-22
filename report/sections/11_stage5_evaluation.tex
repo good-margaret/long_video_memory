@@ -1,0 +1,57 @@
+\section{Stage 5: evaluation protocol}\label{sec:stage5}
+
+\paragraph{Runs.}
+\cmd{memvid run-all} builds C4, resolves the budgets, then builds and answers
+C1--C3 at $B_1$--$B_3$ and the four C3 ablations at $B_2$ (14 runs). It
+refuses to run on unfrozen questions or observations. Each run stores its
+final records, the full operation log, the resolution log, the size trace,
+the models and a signature of its inputs. A run whose configuration, models,
+observations or budget changed is rebuilt automatically, and answers are redone
+when the memory, the questions or the retrieval settings change, so a result
+can never come from stale inputs.
+
+\paragraph{Scoring.}\label{sec:scoring}
+Numbers are parsed (digits or number words) and compared with 5\% relative
+tolerance (timestamps in the answer are ignored); yes/no is compared after
+parsing; for multiple choice the option text is matched before a bare letter,
+so ``a drill'' is not read as option A. Short text is correct on normalised exact
+match, or when every content word of a reference answer is contained in the
+answer and the answer is neither negated nor a list of alternatives (at most
+$\max(2,|r|)$ extra content words for a reference of $|r|$ words). Remaining short-text answers go to the LLM judge
+(\cref{sec:threats}), whose verdicts are cached and validated on all judged
+items in a manual audit; manual scores override the judge.
+
+\paragraph{Failure attribution and audits.}
+For every wrong answer of C2--C4 the code proposes the first stage where the
+evidence was lost (\cref{sec:attribution}): no record overlapping $G(q)$
+survives (storage loss, with the operations that removed them), an
+overlapping record involves a merge or a state change judged wrong in the
+audits (corruption), nothing overlapping was retrieved (retrieval miss), or
+the answer is wrong despite retrieval (reasoning error). The annotator
+confirms each proposal and marks perception misses from the observations.
+The merge audit labels 50 links and 50 new-entity
+decisions of C3 at $B_2$ (merge precision and missed-merge rate); the state
+audit labels 30 detected changes (precision). All rates carry Wilson
+intervals.
+
+\paragraph{Statistics.}
+All comparisons are paired over questions: exact McNemar tests for two
+conditions on the same questions, and 95\% percentile bootstrap intervals with
+$10^4$ resamples of questions for every accuracy and rate. Audit rates carry
+Wilson intervals.
+
+\paragraph{Demo.}
+\cmd{memvid demo} starts a Gradio application with three views: memory over
+time (a slider replays the operation log to any chunk and shows the records,
+the operations of that chunk and a timeline), question answering on the final
+memory of any run with the retrieved and cited records and the supporting clip
+(cut with ffmpeg), and the same question answered by every condition side by
+side.
+
+\paragraph{Scope relative to the brief.}
+Everything the brief requires is implemented (\cref{tab:task-map}). Beyond it,
+the project adds two question types (attribute recall and speech), three
+budget levels, ablations of the structured memory, manual audits and a failure
+attribution, all of which deepen the analysis of what is kept and lost and how
+memory is updated. Exact vector search is used instead of an approximate index:
+with at most a few thousand records it is fast and has no approximation error.

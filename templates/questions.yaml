@@ -1,0 +1,67 @@
+# Evaluation set (Stage 2). Copy to data/annotations/<video_id>/questions.yaml.
+#
+# Write ALL questions before any memory is built, so they cannot be tailored to what
+# a particular memory happens to store. Aim for 60-80 questions, about 12-16 per type,
+# with evidence spread over the whole video (including the first 10 minutes).
+#
+# Fields
+#   id               unique, letters/digits/_/- (e.g. q001)
+#   question         the question as asked
+#   answer           reference answer; for multiple_choice the option LETTER
+#   accepted_answers optional list of other correct short answers
+#   answer_type      short_text | number | yes_no | multiple_choice
+#   options          multiple_choice only
+#   type             past_event | object_change | cross_segment | attribute_recall | speech
+#   gt_intervals     list of [start, end] containing the evidence ("mm:ss", "hh:mm:ss" or s)
+#   evidence_time    optional; latest moment whose information is needed (default: last end)
+#   modality         visual | speech | both
+#   notes            optional
+#
+# Then: memvid questions-validate, questions-split, questions-freeze
+
+video_id: my_video
+annotator: "Your Name"
+questions:
+  - id: q001
+    question: "What color was the board before it was painted?"
+    answer: "raw wood"
+    accepted_answers: ["natural wood", "unpainted"]
+    answer_type: short_text
+    type: object_change
+    gt_intervals: [["00:01:10", "00:01:40"]]
+    evidence_time: "00:01:40"
+    modality: visual
+
+  - id: q002
+    question: "Why did the speaker choose pine?"
+    answer: "it is cheap"
+    accepted_answers: ["cheap", "low cost"]
+    answer_type: short_text
+    type: speech
+    gt_intervals: [["00:02:10", "00:02:30"]]
+    modality: speech
+
+  - id: q003
+    question: "Which tool used in the first ten minutes is used again at the end?"
+    answer: "C"
+    options: ["hand saw", "tape measure", "cordless drill", "sander"]
+    answer_type: multiple_choice
+    type: cross_segment
+    gt_intervals: [["00:05:30", "00:06:00"], ["00:48:15", "00:48:40"]]
+    modality: visual
+
+  - id: q004
+    question: "How many screws were left on the table after assembly?"
+    answer: "2"
+    answer_type: number
+    type: attribute_recall
+    gt_intervals: [["00:49:20", "00:49:40"]]
+    modality: visual
+
+  - id: q005
+    question: "Did he sand the board before painting it?"
+    answer: "yes"
+    answer_type: yes_no
+    type: past_event
+    gt_intervals: [["00:20:00", "00:22:00"], ["00:31:00", "00:31:30"]]
+    modality: visual

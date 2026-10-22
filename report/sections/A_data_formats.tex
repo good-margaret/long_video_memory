@@ -1,0 +1,30 @@
+\section{Data formats}\label{app:formats}
+
+\subsection{Derived artifacts}
+Machine-generated, stored in \cmd{data/\allowbreak derived/\allowbreak <video\_id>/\allowbreak }. Times are in
+seconds from the start of the video.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+File & Content (one JSON object per line for \texttt{.jsonl}) \\
+\midrule
+\texttt{video\_info.json} & duration, resolution, frame rate, codecs, audio
+  stream, SHA-256 of the source \\
+\texttt{audio.wav} & 16 kHz mono 16-bit PCM \\
+\texttt{transcript.jsonl} & \texttt{segment\_id, start, end, text,
+  avg\_logprob, no\_speech\_prob} \\
+\texttt{asr\_info.json} & model, device, compute type, detected language,
+  wall time, real-time factor, settings \\
+\texttt{chunks.jsonl} & \texttt{chunk\_id, t\_start, t\_end,
+  transcript\_text, segment\_ids} \\
+\texttt{frames/index.jsonl} & \texttt{chunk\_id, frame\_index, t\_target,
+  t\_actual, path, width, height} \\
+\texttt{frames/chunk\_XXXX/fYY.jpg} & resized frames \\
+\texttt{manifest.json} & per artifact: path, SHA-256 (tree hash for frames),
+  size, producing step, configuration hash, package version, time; statistics
+  per step; frozen stages \\
+\bottomrule
+\end{tabularx}
+\end{table}

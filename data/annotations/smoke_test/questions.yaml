@@ -1,0 +1,12 @@
+# Questions for the synthetic smoke-test video (plumbing test only; answers are arbitrary).
+video_id: smoke_test
+annotator: smoke
+questions:
+  - {id: s01, question: "What color is the scene at the beginning?", answer: "blue", type: object_change, answer_type: short_text, gt_intervals: [["00:00", "00:10"]], modality: visual}
+  - {id: s02, question: "What color is the scene at the end?", answer: "red", type: object_change, answer_type: short_text, gt_intervals: [["01:20", "01:30"]], modality: visual}
+  - {id: s03, question: "Does the scene change color?", answer: "yes", type: cross_segment, answer_type: yes_no, gt_intervals: [["00:00", "01:30"]], modality: visual}
+  - {id: s04, question: "How many colors does the scene show?", answer: "2", type: attribute_recall, answer_type: number, gt_intervals: [["00:00", "01:30"]], modality: visual}
+  - {id: s05, question: "What happens after the scene is blue?", answer: "B", options: ["nothing", "the scene turns another color"], type: past_event, answer_type: multiple_choice, gt_intervals: [["00:10", "00:30"]], modality: visual}
+  - {id: s06, question: "What is said at the start?", answer: "nothing", type: speech, answer_type: short_text, gt_intervals: [["00:00", "00:20"]], modality: speech}
+  - {id: s07, question: "Which object appears first in the video?", answer: "scene", type: past_event, answer_type: short_text, gt_intervals: [["00:00", "00:10"]], modality: visual}
+  - {id: s08, question: "Is the scene the same object at the start and the end?", answer: "yes", type: cross_segment, answer_type: yes_no, gt_intervals: [["00:00", "00:10"], ["01:20", "01:30"]], modality: visual}

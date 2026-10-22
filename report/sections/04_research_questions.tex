@@ -1,0 +1,136 @@
+\section{Research questions}\label{sec:rq}
+
+\subsection{From the task to research questions}
+The project brief asks for a memory over one long video that supports adding,
+updating, merging, compressing, deleting and searching records; for questions
+about past events, changes to objects, and relations between different parts
+of the video; and for an analysis of what the system keeps and loses, how it
+updates memory, how it finds relevant records, how accurate its answers are,
+and whether its timestamps match the source clips. A comparison against a plain
+text summary or another memory organisation, with the same observations and a
+similar budget, is optional. \Cref{tab:task-map} shows where each requirement
+is addressed.
+
+\begin{table}[ht]
+\centering\small
+\caption{Requirements of the brief and where they are addressed.}\label{tab:task-map}
+\begin{tabularx}{\linewidth}{@{}XX@{}}
+\toprule
+Requirement & Addressed by \\
+\midrule
+Memory structure; add, update, merge, compress, delete, search &
+  structured memory C3 (\cref{sec:stage4}) \\
+Questions on past events, object changes, cross-part relations &
+  question types \emph{past event}, \emph{object change}, \emph{cross segment}
+  (\cref{sec:stage2}) \\
+What the system keeps and loses & RQ2 \\
+How it updates memory after new events & RQ3 \\
+How it finds relevant records & retrieval recall (RQ4) \\
+Answer accuracy; timestamps vs.\ source clips & RQ1, RQ4 \\
+Optional comparison, same observations and budget & baselines C1, C2, C4 (RQ1) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Research questions}
+
+\begin{description}[style=nextline,leftmargin=2.2em]
+\item[RQ1 (accuracy and organisation).]
+How accurately does the structured memory (C3) answer each type of question,
+and how does it compare, at an equal budget $B$, with a rolling summary (C1),
+a flat log (C2) and the unbounded log (C4)?
+\item[RQ2 (what is kept and lost).]
+Which information survives under a budget and which is lost first, and how
+does accuracy change with evidence age $\age(q)$?
+\item[RQ3 (updating).]
+How reliably does the memory recognise that two mentions denote the same
+entity and that an entity's attribute has changed, and how do errors in these
+operations reach the answers?
+\item[RQ4 (retrieval and grounding).]
+Are the records relevant to a question retrieved, and do the records cited in
+an answer have time support $I(C)$ overlapping the ground-truth evidence
+$G(q)$?
+\end{description}
+
+\Cref{tab:rq-ops} lists how each question is measured. The analysis is
+descriptive: every quantity is reported with a 95\% interval, and comparisons
+between conditions are paired over questions.
+
+\begin{table}[ht]
+\centering\small
+\caption{Operationalisation of the research questions.}\label{tab:rq-ops}
+\begin{tabularx}{\linewidth}{@{}lXXl@{}}
+\toprule
+RQ & Primary measure & Secondary measures & Conditions \\
+\midrule
+RQ1 & $\Acc_m(B)$, overall and per question type & paired per-question
+  differences (McNemar) & C1--C4, $B_1$--$B_3$ \\
+RQ2 & evidence coverage (C2--C3); accuracy vs.\ $\age(q)$ (C1--C3) &
+  operation-log trace of lost facts; memory size over time & C1--C3 \\
+RQ3 & operation counts; merge precision and missed-merge rate (audit) &
+  state-change precision; share of errors caused by corruption; ablations & C3 \\
+RQ4 & retrieval recall; $g_m(q)$, $p_m(q)$, $\mathrm{tIoU}_m(q)$ & invalid citations & C2--C4 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Expectations}
+The design rests on four expectations, stated here so the reader can compare
+them with the results; they are not tested as formal hypotheses.
+\begin{itemize}[nosep]
+\item Structured memory should help most on object-change and cross-segment
+  questions, because state changes and entity identities are kept as explicit
+  records that compression does not touch.
+\item A rolling summary should lose fine attributes (colours, counts,
+  intermediate states) before coarse events.
+\item Differences between organisations should shrink as the budget grows.
+\item Entity-resolution errors should be a major cause of failures on
+  cross-segment questions.
+\end{itemize}
+
+\subsection{Failure attribution}\label{sec:attribution}
+For each incorrect answer of a record-based organisation (C2--C4), exactly one
+cause is assigned, checking the pipeline in order and stopping at the first
+stage where the evidence is lost:
+\begin{enumerate}[nosep]
+  \item \emph{perception miss}: no observation $o_i$ with $c_i\cap G(q)\neq\varnothing$
+        contains the evidence;
+  \item \emph{storage loss}: it was observed but deleted or compressed away
+        (traceable in the operation log);
+  \item \emph{corruption}: it is stored, but a wrong merge (entity resolution)
+        or a spurious state change distorted it;
+  \item \emph{retrieval miss}: it is present in $M_n$ but not in $R(q,M_n)$;
+  \item \emph{reasoning error}: it was retrieved, but the answer is wrong.
+\end{enumerate}
+The ordering makes the attribution unique and puts the burden of proof on the
+earliest stage, which prevents perception errors from being misread as memory
+failures.
+
+\subsection{Statistical power and its consequences}\label{sec:power}
+The planned evaluation set has 60--80 test questions. For an accuracy near
+0.5 on $|\mathcal Q|=60$ questions, the half-width of a 95\% normal interval is
+$1.96\sqrt{0.25/60}\approx 0.13$; for a single type with about 12 questions it
+is $\approx 0.28$. Paired designs narrow these intervals considerably, because
+all organisations answer the same questions, but differences below roughly
+10 percentage points overall, and below 25 points within a type, cannot be
+resolved. Two consequences follow. First, all comparisons are paired
+(McNemar's test~\citep{mcnemar1947} for two organisations; percentile
+bootstrap~\citep{efron1993bootstrap} over questions for intervals). Second,
+every reported number carries a 95\% interval, and differences whose intervals
+overlap substantially are described as not resolved rather than as effects.
+
+\subsection{Threats to validity}\label{sec:threats}
+\begin{itemize}[nosep]
+  \item \emph{External validity}: one video, one genre. Findings concern this
+        video; generalisation is argued, not measured.
+  \item \emph{Perception ceiling}: all organisations inherit the errors of
+        $\phi$. Its error rates are measured (Stage~3) and reported as the
+        bound they impose.
+  \item \emph{Annotator effects}: a single annotator writes and labels the
+        questions. Mitigated by writing the questions before any memory
+        exists and by tuning on the development split only.
+  \item \emph{Judge bias}: free-form answers are scored with a rubric; any
+        model-based judging is validated on a manually scored sample.
+  \item \emph{Temporal resolution}: grounding is measured at chunk
+        granularity $L$; claims about sub-chunk localisation are not possible.
+\end{itemize}

@@ -1,0 +1,41 @@
+\section{Stage 2: evaluation set}\label{sec:stage2}
+
+\paragraph{Design.}
+The evaluation set consists of 60--80 questions written by hand into
+\cmd{data/\allowbreak annotations/\allowbreak <video\_id>/\allowbreak questions.yaml} (template:
+\cmd{templates/questions.yaml}) \emph{before any memory is built}, so the
+questions cannot be shaped by what a particular organisation happens to store.
+Each question carries a reference answer (and optional accepted variants), an
+answer type (short text, number, yes/no, multiple choice), one of five
+question types, the ground-truth evidence intervals
+$G(q)$, the evidence time $e(q)$ (by default the end of the latest interval),
+and the modality of the evidence. Answer types that can be scored
+automatically are preferred; free text is limited to short answers. Three
+question types are required by the brief: \emph{past event}, \emph{object
+change} and \emph{cross segment} (relations between distant parts of the
+video). Two are added to sharpen the analysis of what is lost:
+\emph{attribute recall} (fine details such as counts and colours) and
+\emph{speech} (facts available only in the audio).
+
+\paragraph{Validation.}
+\cmd{memvid questions-validate} rejects malformed records (unknown types,
+inverted or out-of-range intervals, non-numeric answers to numeric questions,
+option letters out of range, duplicate identifiers) and warns when a question
+required type has fewer than eight questions, when fewer than 15\% of the questions have
+evidence in the first ten minutes, or when the evidence does not cover all four
+quartiles of the video. Old evidence is what tests retention (RQ2).
+
+\paragraph{Split.}
+\cmd{memvid questions-split} assigns about 15 questions to a development split
+and the rest to the test split, stratified by question type with
+largest-remainder allocation and a fixed seed. Thresholds, prompts and
+priority weights are tuned on the development split only; the test split is
+answered once, by the frozen configuration.
+
+\paragraph{Freezing.}
+\cmd{memvid questions-freeze} stores the SHA-256 of \cmd{questions.yaml} and
+\cmd{split.json} in the manifest; afterwards every command that loads the
+questions fails if either file changed, and re-splitting is refused.
+
+\generated{questions_stats.tex}{question-set statistics, produced by
+\cmd{memvid questions-freeze} and \cmd{memvid export-tex}.}

@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ruff_cache/
+build/
+dist/
+
+# Data: videos and derived artifacts are large and often not redistributable.
+# The manifest (hashes) is the reproducibility record; commit it explicitly if wanted:
+#   git add -f data/derived/<video_id>/manifest.json
+data/raw/*
+!data/raw/.gitkeep
+data/derived/*
+!data/derived/.gitkeep
+runs/*
+!runs/.gitkeep
+# Human annotations (data/annotations/) ARE committed.
+
+# LaTeX build products (build the report with latexmk)
+report/main.pdf
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.fdb_latexmk
+report/*.fls
+report/*.log
+report/*.out
+report/*.toc
+report/*.synctex.gz
+report/build/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/

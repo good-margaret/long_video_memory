@@ -1,0 +1,185 @@
+\section{Stage 1 methodology}\label{sec:stage1}
+
+Stage~1 consists of three steps: setting up a verifiable environment
+(\cref{sec:env}), selecting the video (\cref{sec:selection}),
+and preprocessing it into frozen, hashed artifacts
+(\cref{sec:preprocessing}). All steps are implemented in the \memvid{} Python
+package and exposed as \cmd{memvid <command>}; the commands are named in
+the text. Parameter values quoted below are those of
+\cmd{configs/default.yaml} and are listed in \cref{tab:stage1-params}, which is
+generated from the configuration rather than copied.
+
+\subsection{Step 1: environment and reproducibility}\label{sec:env}
+
+\paragraph{Software.}
+The package targets Python $\ge 3.10$ and uses a \cmd{src} layout with
+dependencies declared in \cmd{pyproject.toml}: a small core (pydantic,
+PyYAML, NumPy, Pillow, tqdm) and optional groups for speech recognition
+(faster-whisper), the models (PyTorch, transformers), sentence embeddings,
+figures, the demo and development tools. ffmpeg and ffprobe are system
+binaries.
+
+\paragraph{Environment check.}
+\cmd{memvid check-env} records the Python and OS versions, the ffmpeg version,
+the version of every relevant package, and the GPU, and fails if a hard
+requirement is missing. The report is stored as JSON and exported to the
+environment table below.
+
+\paragraph{Reproducibility measures.}
+\begin{enumerate}[nosep]
+  \item \emph{Typed configuration.} Every run is defined by one YAML file
+        validated against a schema that rejects unknown keys, so a misspelled
+        parameter fails instead of silently taking its default.
+  \item \emph{Determinism and freezing.} A single seed controls every random
+        choice of the package (the dev/test split and the audit samples).
+        Speech recognition is not fully deterministic under its default
+        temperature fallback, which re-decodes difficult windows by sampling
+        (configurable; disabling it gives deterministic decoding at some cost
+        in quality). Identity of the inputs to later stages is therefore
+        guaranteed by freezing the transcript, not by re-running ASR.
+  \item \emph{Provenance manifest.} For every derived artifact the manifest
+        stores its SHA-256, the producing step, a hash of the configuration
+        sections that determined it, and the package version
+        (\cref{sec:provenance}).
+  \item \emph{Pinned versions.} The exact environment is recorded with
+        \cmd{pip freeze}, and the commit used for reported results is tagged.
+\end{enumerate}
+
+\generated{environment.tex}{environment table, produced by
+\cmd{memvid check-env} followed by \cmd{memvid export-tex}.}
+
+\subsection{Step 2: video selection}\label{sec:selection}
+
+The choice of video determines whether the research questions can be answered
+at all: a video without recurring entities cannot test entity resolution, and
+one without state changes cannot test updating. The video should therefore
+last at least 20 minutes, as the brief requires (longer videos make evidence
+age, and thus RQ2, observable over a wider range), have an audio track with
+speech, contain objects and people that reappear in distant parts of the
+video, and show objects whose state changes (painted, filled, assembled).
+
+The video is placed in \cmd{data/\allowbreak raw/\allowbreak } and probed
+(\cmd{memvid probe}): duration, resolution, frame rate, codecs, presence of an
+audio stream, and the SHA-256 of the file, which identifies the exact source
+for all later results. A video shorter than 20 minutes is reported with a
+warning. The questions (Stage~2) are written before any memory exists, so they
+cannot be tailored to what a particular organisation happens to capture.
+
+\subsection{Step 3: preprocessing}\label{sec:preprocessing}
+
+\subsubsection{Audio extraction}
+The first audio stream is decoded to 16-bit PCM, mono, at 16~kHz, the native
+input format of Whisper (\cmd{memvid extract-audio}). The duration of the
+extracted audio is compared with the video duration; a difference above
+0.5~s aborts the step, because every transcript timestamp is expressed in
+audio time and would otherwise be misaligned with the frames.
+
+\subsubsection{Speech recognition}\label{sec:asr}
+Transcription uses faster-whisper~\citep{fasterwhisper} with the
+\texttt{large-v3} model~\citep{radford2023whisper} and beam size~5
+(\cmd{memvid transcribe}). Two settings deviate from library defaults, both
+motivated by known failure modes on long recordings:
+\begin{itemize}[nosep]
+  \item \emph{Voice-activity filtering} (\texttt{vad\_filter=true}): non-speech
+        regions are removed before decoding, which suppresses fluent but
+        hallucinated text on silence and background
+        sounds~\citep{koenecke2024careless}.
+  \item \emph{No conditioning on previous text}
+        (\texttt{condition\_on\_previous\_text=false}): with conditioning, one
+        decoding error is fed back as the prompt for the next window and can
+        start a repetition loop that persists for minutes.
+\end{itemize}
+The output is a list of segments $s_j=[a_j,b_j]$ with text, average
+log-probability and no-speech probability. Segments whose no-speech
+probability exceeds 0.6 are counted as suspicious and reported, not removed:
+removal would be an unverified editorial decision on the evidence. Segment
+timestamps are not checked by hand: transcripts enter the memory at chunk
+granularity ($L=20$~s), where a boundary error of about a second changes at
+most which of two adjacent chunks a segment is attached to.
+
+\subsubsection{Chunking}\label{sec:chunking}
+With chunk length $L$ and $n_0=\lfloor T/L\rfloor$, the base chunks are
+$[iL,(i+1)L)$ for $i=0,\dots,n_0-1$. The remainder $r=T-n_0L$ forms an
+additional chunk $[n_0L,T)$ if $r\ge\alpha L$, and is otherwise merged into
+the last chunk. Hence every chunk has length in $[\alpha L,(1+\alpha)L)$
+unless $T<L$. Defaults: $L=20$~s, $\alpha=0.5$ (\cmd{memvid chunk}).
+
+The choice of $L$ is a trade-off. Smaller chunks give finer provenance, since
+$L$ is the temporal resolution of every grounding result, but increase the
+number of perception calls ($n\approx 180$ for one hour at $L=20$~s) and
+fragment events that last longer than a chunk across several observations,
+which the memory must then reassemble. A sensitivity check with
+$L\in\{10,30\}$~s is planned as an ablation once perception exists.
+
+\paragraph{Transcript assignment.}
+Segment $s_j$ is attached to chunk $c_i$ iff
+\begin{equation}
+  \operatorname{ov}(s_j,c_i) = \min(b_j,v_i)-\max(a_j,u_i) \;\ge\;
+  \min\bigl(\delta,\; b_j-a_j\bigr),
+  \qquad \delta=0.25\text{ s}.
+\end{equation}
+The $\min$ with the segment length ensures that very short segments are
+attached to the chunk containing them. A segment that straddles a boundary by
+more than $\delta$ on both sides is attached to both chunks. This duplication
+is deliberate: speech near a boundary is evidence for both chunks, and
+assigning it to only one would make the observation of the other chunk
+incomplete. A segment overlapping a chunk by less than $\delta$ is a
+timestamp-noise artefact and is not attached to it.
+
+\subsubsection{Frame sampling}
+Frame $k$ of chunk $[u,v)$ is requested at the midpoint of the $k$-th of $N$
+equal sub-intervals,
+\begin{equation}
+  t_k = u + \bigl(k+\tfrac12\bigr)\frac{v-u}{N}, \qquad k=0,\dots,N-1,
+\end{equation}
+(\cmd{memvid sample-frames}). Unlike endpoint sampling, midpoints never fall on
+a chunk boundary, so adjacent chunks never share a frame, and the spacing
+$(v-u)/N$ stays uniform across boundaries. With $N=8$ and $L=20$~s the
+effective rate is $0.4$ frames/s. This rate is a real limitation and is stated
+as such: a purely visual event shorter than $L/N=2.5$~s can fall between two
+samples and be invisible to perception. It bounds perception recall and must
+be kept in mind when interpreting perception misses
+(\cref{sec:attribution}).
+
+\paragraph{Decoding and timestamp accuracy.}
+Frames are extracted by calling ffmpeg once per chunk, seeking on the input
+(frame-accurate when decoding) and applying a \texttt{select} filter that keeps,
+for each target $t_k$, the \emph{first frame whose presentation time is at or
+after} $t_k$. The \texttt{showinfo} filter reports the true presentation time
+$t_k^{\mathrm{act}}$ of each kept frame, which is stored alongside the request.
+The selection rule bounds the timing error to $0\le t_k^{\mathrm{act}}-t_k<1/f$
+for frame rate $f$. Frames are resized so that the longer side is at most
+768~px (the visual-token cost of the VLM grows with resolution) and stored as
+JPEG at quality 90.
+
+\paragraph{Verification of the frame sampler.}
+The sampler was verified on a synthetic test pattern (ffmpeg
+\texttt{testsrc2}, 25~fps), in which every frame differs from every other.
+Each extracted frame was compared with all frames obtained by an independent
+sequential decoder (OpenCV): in every case the extracted image was
+pixel-identical to the frame at the reported $t_k^{\mathrm{act}}$, and the
+timing error lay in $[0,1/f)$, including targets within one frame of the end
+of the stream.
+
+\subsubsection{Provenance and freezing}\label{sec:provenance}
+All artifacts of a video are written atomically (temporary file and rename)
+into \cmd{data/\allowbreak derived/\allowbreak<video\_id>/} and registered in a manifest with their
+hashes (\cref{app:formats}). Frames are registered as one tree hash over the
+sorted pairs of relative path and file hash. After preprocessing,
+\cmd{memvid freeze} verifies all hashes and marks the derived data as frozen.
+From then on, any step that would overwrite a frozen artifact refuses to run
+unless explicitly forced, and \cmd{memvid verify} detects any modification.
+Every later stage records the manifest hash it consumed, so a result can
+always be traced to the exact inputs that produced it.
+
+\generated{stage1_params.tex}{parameter table, produced by
+\cmd{memvid export-tex}.}
+
+\subsection{Software verification}
+During development the package was checked by an automated test suite (75
+tests, all passing): timestamp parsing, configuration validation, chunk
+construction and its edge cases, the transcript assignment rule, frame timing
+and end-of-stream handling, the memory invariants (budget never exceeded,
+provenance preserved, log replay reproduces the memory), scoring, and the
+complete pipeline on a synthetic video. The submitted repository keeps the
+smoke test instead (README), which runs every stage end to end without a GPU.

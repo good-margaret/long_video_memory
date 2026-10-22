@@ -1,0 +1,94 @@
+\documentclass[11pt,a4paper]{article}
+
+% ------------------------------------------------------------------ packages
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+% Latin Modern (scalable) if installed; otherwise disable font expansion,
+% which requires scalable fonts.
+\IfFileExists{lmodern.sty}{\usepackage{lmodern}\usepackage{microtype}}%
+  {\usepackage[expansion=false]{microtype}}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage[section]{placeins} % floats never drift past their section
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,shapes.geometric}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=green!40!black,urlcolor=blue!60!black]{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+
+% Allow extra inter-word stretch instead of overfull lines (long \texttt names).
+\setlength{\emergencystretch}{3em}
+
+% ------------------------------------------------------------------ macros
+\newcommand{\memvid}{\texttt{memvid}}
+\newcommand{\cmd}[1]{\texttt{#1}}
+\newcommand{\Acc}{\mathrm{Acc}}
+\newcommand{\age}{\operatorname{age}}
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\toklen}[1]{\lvert #1 \rvert_{\tau}}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+% A boxed placeholder shown until `memvid export-tex` has produced a table.
+\newcommand{\pending}[1]{%
+  \begin{center}\fbox{\begin{minipage}{0.85\linewidth}\small\itshape
+  Pending: #1\end{minipage}}\end{center}}
+% Include a generated table if it exists, otherwise show a placeholder.
+\newcommand{\generated}[2]{\IfFileExists{generated/#1}{\input{generated/#1}}{\pending{#2}}}
+
+% ------------------------------------------------------------------ title
+\title{Budgeted Structured Memory for Question Answering over Long Videos\\[0.4em]
+\large Course project report: \emph{Memory for long videos}}
+\author{Your Name\\\small Course project: \emph{Memory for long videos}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A vision-language model cannot hold a long video in its context at useful
+resolution, so answering questions about a 20--60 minute video requires a
+memory that is written incrementally and kept within a fixed budget. We state
+the problem formally and ask how the \emph{organisation} of such a memory
+determines what is retained, how it is updated, how it is retrieved and
+whether answers remain grounded in the source video. A frozen preprocessing
+and perception pipeline turns the video into per-chunk observations; four
+memory organisations (a rolling summary, a flat log, a structured memory of
+entities, events, state changes and relations, and an unbounded log) consume
+identical observations under identical token budgets and answer the same
+questions through the same model. The analysis reports, with paired
+comparisons and bootstrap intervals, what each memory keeps and loses, how
+reliably it updates, whether relevant records are retrieved and cited answers
+are grounded, and attributes every wrong answer of the record-based memories
+to the first stage where the evidence was lost.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_problem_formulation}
+\input{sections/04_research_questions}
+\input{sections/05_system_overview}
+\input{sections/06_stage1_methodology}
+\input{sections/07_stage1_results}
+\input{sections/08_stage2_questions}
+\input{sections/09_stage3_perception}
+\input{sections/10_stage4_memory}
+\input{sections/11_stage5_evaluation}
+\input{sections/12_results}
+\input{sections/13_conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\appendix
+\input{sections/A_data_formats}
+
+\end{document}

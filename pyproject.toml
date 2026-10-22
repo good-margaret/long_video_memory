@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memvid"
+version = "1.4.0"
+description = "Budgeted, structured memory for question answering over long videos: preprocessing, VLM perception, memory organisations, evaluation and demo."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Your Name" }]
+keywords = ["video understanding", "memory", "vision-language models", "long video QA"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core dependencies: everything needed for Stage 1 (environment check, video
+# probing, audio extraction, chunking, frame sampling, manifests, LaTeX export).
+# ffmpeg/ffprobe are system binaries and are NOT installed by pip (see README).
+dependencies = [
+    "pydantic>=2.6",
+    "pyyaml>=6.0",
+    "numpy>=1.24",
+    "pillow>=10.0",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+# Speech recognition (Stage 1). Pulls in CTranslate2.
+asr = ["faster-whisper>=1.0"]
+# Local VLM / LLM (Stages 3-5): Qwen3-VL needs transformers >= 4.57.
+# Install the CUDA build of torch first (see README).
+models = ["torch>=2.3", "transformers>=4.57", "accelerate>=0.30"]
+# Sentence embeddings for entity resolution and retrieval (Stage 4).
+memory = ["sentence-transformers>=3.0"]
+# Figures (Stage 5) and the results notebook.
+analysis = ["matplotlib>=3.8", "pandas>=2.0"]
+# Interactive demo (Stage 5).
+demo = ["gradio>=4.40", "matplotlib>=3.8"]
+# Linting.
+dev = ["ruff>=0.5"]
+# Everything for a full run on a GPU machine.
+all = ["memvid[asr,models,memory,analysis,demo,dev]"]
+
+[project.scripts]
+memvid = "memvid.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/memvid"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# prompt templates are kept one paragraph per line
+"src/memvid/prompts.py" = ["E501"]

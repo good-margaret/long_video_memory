@@ -1,0 +1,55 @@
+\section{Introduction and problem statement}\label{sec:intro}
+
+\paragraph{Motivation.}
+Questions about long videos are rarely answered by a single moment. ``What
+colour was the board before it was painted?'' requires the system to have
+noticed the board early on, to have registered the change later, and to
+recognise that both observations concern the same object. ``Which tool used at
+the beginning reappears at the end?'' requires linking entities across tens of
+minutes. Current vision-language models (VLMs) process a bounded number of
+visual tokens; a 60-minute video sampled at even one frame per second exceeds
+that bound by orders of magnitude, and uniform subsampling discards exactly the
+fine, transient details such questions target.
+
+The alternative studied here is to observe the video incrementally, in short
+chunks, and to maintain a \emph{memory}: a compact, queryable representation
+written as the video unfolds and consulted when a question is asked. Because
+the memory must itself fit into the answering model's context, it operates
+under a \emph{budget}. The system must therefore decide what to store, how to
+update stored knowledge when the world changes, which mentions refer to the
+same entity, what to compress and what to forget.
+
+\paragraph{Problem statement.}
+Given one long video, a fixed perception pipeline that converts each chunk into
+an observation, and a fixed memory budget, we ask which \emph{organisation} of
+memory best supports answering questions about past events, changes of
+objects, and relations between distant parts of the video, and whether the
+answers it supports can be traced back to the correct source clips.
+
+The object of study is the memory organisation, not the perception model. This
+has a strict methodological consequence that shapes the whole design: every
+memory variant must consume \emph{identical} per-chunk observations and operate
+under the \emph{same} budget, measured in the same unit, and must be queried by
+the same answering model with the same retrieval allowance. Differences in
+accuracy can then be attributed to memory organisation alone. The pipeline is
+therefore built in stages whose outputs are hashed and frozen before the next
+stage starts, so any later deviation from them is detectable.
+
+\paragraph{Contributions.}
+\begin{enumerate}[nosep]
+  \item A formal statement of budgeted incremental video memory and of the
+        evaluation quantities (\cref{sec:formulation}).
+  \item Four research questions derived from the project brief, each with
+        operational measures (\cref{sec:rq}).
+  \item A system design whose two invariants, memory-agnostic perception and
+        provenance-preserving, event-sourced memory, make the planned
+        comparisons valid (\cref{sec:overview}).
+  \item A documented pipeline in five stages: environment check,
+        video probing and reproducible preprocessing
+        (\cref{sec:stage1}); a frozen evaluation set (\cref{sec:stage2});
+        audited VLM perception (\cref{sec:stage3}); a structured memory with
+        entity resolution, debounced state changes, compression and
+        priority-based forgetting, with three baselines (\cref{sec:stage4});
+        and an evaluation protocol with failure attribution, audits and an
+        interactive demo (\cref{sec:stage5}).
+\end{enumerate}

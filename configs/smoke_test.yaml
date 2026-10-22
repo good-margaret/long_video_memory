@@ -1,0 +1,46 @@
+# Smoke-test configuration: runs EVERY stage on a synthetic video without a GPU.
+#   memvid make-test-video --out data/raw/smoke_test.mp4 --duration 90
+#   memvid preprocess -c configs/smoke_test.yaml --skip-asr
+# The synthetic audio is a tone (no speech) and the models are the deterministic
+# heuristic stand-in: this exercises the plumbing only. Its numbers mean nothing.
+
+video:
+  video_id: smoke_test
+  filename: smoke_test.mp4
+
+asr:
+  model_size: tiny
+  device: cpu
+
+chunking:
+  chunk_seconds: 10.0
+
+frames:
+  frames_per_chunk: 4
+  max_side: 320
+
+models:
+  vlm: {backend: heuristic, model_id: heuristic}
+  llm: {backend: heuristic, model_id: heuristic}
+  embedder: hashing
+  tokenizer: approx
+
+questions:
+  dev_size: 2
+  min_per_type: 1
+
+perception:
+  audit_size: 3
+
+budgets:
+  mode: fraction
+  values: {B1: 0.2, B2: 0.4, B3: 0.8}
+
+analysis:
+  n_bootstrap: 300
+  judge_free_form: false
+  audit_merges: 5
+  audit_new_entities: 5
+  audit_state_changes: 5
+
+seed: 0

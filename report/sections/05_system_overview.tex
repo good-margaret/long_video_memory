@@ -1,0 +1,89 @@
+\section{System overview}\label{sec:overview}
+
+\Cref{fig:architecture} shows the complete system. Stage~1
+(\cref{sec:stage1}) produces the frozen preprocessing outputs on the left;
+perception (\cref{sec:stage3}) turns them into frozen observations; the
+memory organisations, retrieval and answering (\cref{sec:stage4}) and the
+evaluation (\cref{sec:stage5}) follow.
+
+\begin{figure}[ht]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  font=\small,
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=0.9cm,
+              inner sep=4pt, fill=#1},
+  box/.default=white,
+  arr/.style={-{Stealth[length=2mm]}, thick},
+  node distance=0.55cm and 0.6cm]
+  \node[box=gray!12] (video) {video\\\texttt{data/raw}};
+  \node[box=blue!8, right=of video, yshift=0.7cm] (audio) {audio\\16 kHz mono};
+  \node[box=blue!8, right=of audio] (asr) {ASR\\segments};
+  \node[box=blue!8, right=of video, yshift=-0.7cm] (frames) {frames\\$N$ per chunk};
+  \node[box=blue!8, right=of asr, yshift=-0.7cm] (chunks) {chunks\\$[u_i,v_i)$};
+  \node[draw, dashed, rounded corners, inner sep=6pt,
+        fit=(audio)(asr)(frames)(chunks),
+        label={[font=\footnotesize]above:Stage 1 (frozen, hashed)}] (s1) {};
+  \node[box=orange!12, right=of chunks] (perc) {perception $\phi$\\(VLM)};
+  \node[box=orange!12, right=of perc] (obs) {$o_{1:n}$\\frozen};
+  \node[box=green!10, below=1.2cm of obs, xshift=-2.6cm] (c1) {C1\\summary};
+  \node[box=green!10, right=0.25cm of c1] (c2) {C2\\FIFO log};
+  \node[box=green!10, right=0.25cm of c2] (c3) {C3\\structured};
+  \node[box=green!10, right=0.25cm of c3] (c4) {C4\\unbounded};
+  \node[box=purple!8, below=1.0cm of c2, xshift=0.8cm] (ans)
+       {retrieval $R$ + answerer $A$\\$(\hat a, C)$, cited records};
+  \node[box=gray!12, below=0.7cm of ans] (eval)
+       {evaluation: accuracy, survival, grounding};
+  \draw[arr] (video) |- (audio);
+  \draw[arr] (video) |- (frames);
+  \draw[arr] (audio) -- (asr);
+  \draw[arr] (asr) -| (chunks);
+  \draw[arr] (frames) -| (chunks);
+  \draw[arr] (chunks) -- (perc);
+  \draw[arr] (perc) -- (obs);
+  \foreach \c in {c1,c2,c3,c4} \draw[arr] (obs.south) -- (\c.north);
+  \foreach \c in {c1,c2,c3,c4} \draw[arr] (\c.south) -- (ans.north);
+  \draw[arr] (ans) -- (eval);
+\end{tikzpicture}}
+\caption{Architecture. Every memory organisation C1--C4 reads the same frozen
+observations and is queried by the same retrieval allowance and answerer.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Design invariants}
+
+\paragraph{Memory-agnostic perception.}
+The perception model describes each chunk without seeing the memory. Linking a
+``red mug'' in one chunk to an entity observed twenty minutes earlier is the
+job of the memory, not of perception. Conditioning perception on memory would
+be a natural engineering choice, since it gives the model context, but it
+would make the observations depend on the organisation under test, and the
+comparison of \cref{tab:conditions} would no longer be controlled.
+
+\paragraph{Event-sourced memory.}
+Every operation (insert, merge, update, compress, delete) is appended to an
+operation log, and the memory after chunk $i$ is obtained by replaying the log
+up to $i$. This yields three things at no extra cost: the memory-over-time view
+required by the demo, an audit trail for the failure attribution of
+\cref{sec:attribution}, and a correctness check (replaying the full log
+reproduces the live memory exactly; this was verified for every memory
+organisation during development).
+
+\paragraph{Provenance preservation.}
+The invariant of \cref{sec:formulation}, that merging and compression take the
+union of provenance sets, is enforced in code and was checked after every
+operation type during development. Without it, grounding (RQ4) and fact survival (RQ2) could not
+be measured.
+
+\paragraph{Single budget unit.}
+The budget is measured in tokens of the answerer's tokenizer applied to the
+serialised memory, for every organisation, so ``equal budget'' has one
+meaning.
+
+\subsection{Implications for Stage 1}
+These invariants put four requirements on preprocessing: (i)~chunk boundaries
+must be fixed once, because provenance is expressed in chunk indices;
+(ii)~timestamps must be accurate and verified, because grounding compares them
+with ground truth; (iii)~the inputs to perception must be byte-identical
+across all later runs; (iv)~any accidental modification must be detectable.
+\Cref{sec:stage1} describes how each is met.

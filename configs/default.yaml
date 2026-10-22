@@ -1,0 +1,117 @@
+# Main experiment configuration (all stages).
+# Relative paths are resolved against the project root (folder with pyproject.toml).
+# Unknown keys are rejected, so a typo fails loudly.
+
+video:
+  video_id: my_video            # folder name under data/derived/ and data/annotations/
+  filename: my_video.mp4        # file inside paths.raw_dir
+
+paths:
+  raw_dir: data/raw
+  derived_dir: data/derived
+  annotations_dir: data/annotations
+  runs_dir: runs
+  report_generated_dir: report/generated
+
+audio:
+  sample_rate: 16000            # Whisper's native rate
+  channels: 1
+  max_duration_mismatch_s: 0.5
+
+asr:
+  model_size: large-v3          # use "medium" or "small" if GPU memory is tight
+  device: auto                  # auto | cuda | cpu
+  compute_type: auto            # auto -> float16 (cuda) / int8 (cpu)
+  language: null                # e.g. "en"; null = auto-detect
+  beam_size: 5
+  vad_filter: true
+  condition_on_previous_text: false
+  temperature_fallback: true    # stochastic re-decoding of hard windows; false = deterministic
+  suspicious_no_speech_prob: 0.6
+
+chunking:
+  chunk_seconds: 20.0           # L: also the resolution of timestamp grounding
+  min_last_chunk_fraction: 0.5  # alpha
+  transcript_min_overlap_s: 0.25  # delta
+
+frames:
+  frames_per_chunk: 8           # N: effective rate N/L = 0.4 frames/s
+  max_side: 768
+  jpeg_quality: 90
+
+# ------------------------------------------------------------------ Stages 2-5
+models:
+  vlm:                          # perception (Stage 3)
+    backend: transformers       # transformers | openai (e.g. a `vllm serve` endpoint) | heuristic (smoke tests only)
+    model_id: Qwen/Qwen3-VL-4B-Instruct   # Qwen/Qwen3-VL-2B-Instruct if GPU memory is tight
+    base_url: null              # openai backend only, e.g. http://localhost:8000/v1
+    dtype: auto
+    device_map: auto
+    max_new_tokens: 1024
+    guided_json: true           # openai backend: JSON-schema constrained decoding
+  llm:                          # adjudication, compression, rolling summary, answering, judge
+    backend: transformers       # same checkpoint as the VLM is loaded only once
+    model_id: Qwen/Qwen3-VL-4B-Instruct
+    max_new_tokens: 512
+  embedder: sentence-transformers   # sentence-transformers | hashing (no model; smoke test)
+  embedder_model: sentence-transformers/all-MiniLM-L6-v2
+  tokenizer: auto               # budget unit: tokenizer of models.llm (approx fallback is logged)
+
+questions:
+  filename: questions.yaml      # in data/annotations/<video_id>/
+  dev_size: 15                  # dev split for tuning; the rest is the test split
+  numeric_rel_tol: 0.05
+  min_per_type: 8
+  required_types: [past_event, object_change, cross_segment]   # demanded by the brief
+
+perception:
+  max_pixels: 200704            # 448 x 448 per frame, enforced by resizing before the VLM
+  frames_per_chunk: null        # null = all stored frames (frames.frames_per_chunk)
+  max_transcript_chars: 2000
+  repair_attempts: 1
+  audit_size: 20
+  max_false_entity_rate: 0.15
+
+memory:                         # structured memory C3
+  resolution:
+    tau_low: 0.60               # below: new entity
+    tau_high: 0.80              # above: link automatically; in between: ask the LLM
+    adjudicate: true
+    generic_penalty: 0.10
+    top_k: 5
+  debounce_observations: 2      # a changed attribute must be seen twice in a row
+  volatile_attributes: [location, position]
+  record_volatile_changes: true
+  event_dedup_tau: 0.85
+  event_dedup_lookback: 5
+  compression_window_s: 300
+  protect_recent_chunks: 3
+  priority_weights: {salience: 1.0, refs: 0.5, recency: 1.0, state_change: 2.0, entity: 3.0}
+  use_entity_resolution: true   # ablation switches (set by C3-<ablation> conditions)
+  use_state_changes: true
+  use_compression: true
+
+budgets:
+  mode: fraction                # fraction of the unbounded log C4, or absolute tokens
+  values: {B1: 0.02, B2: 0.05, B3: 0.15}
+
+retrieval:
+  budget_tokens: 1500           # B_R, identical for every condition
+  top_k: 40
+  entity_boost: 0.25
+  temporal_boost: 0.20
+
+experiment:
+  conditions: [C1, C2, C3, C4]
+  ablations: [no_resolution, no_state_changes, no_compression, no_debounce]
+  ablation_budget: B2
+  split: test
+
+analysis:
+  n_bootstrap: 10000
+  judge_free_form: true         # LLM judge for short_text answers failing exact matching
+  audit_merges: 50
+  audit_new_entities: 50
+  audit_state_changes: 30
+
+seed: 0

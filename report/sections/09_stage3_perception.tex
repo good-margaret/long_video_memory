@@ -1,0 +1,48 @@
+\section{Stage 3: perception}\label{sec:stage3}
+
+\paragraph{Observation schema.}
+For every chunk the VLM returns one JSON object with
+\emph{entities} (a noun phrase with distinguishing features, a category from a
+fixed list of 13, and attributes such as colour, state, count, location or
+contents), \emph{events} (one present-tense sentence each, the names of the
+entities involved, salience 1--3), \emph{relations} (subject, predicate,
+object triples) and a \emph{speech summary}. The prompt is reproduced in
+\cmd{src/\allowbreak memvid/\allowbreak prompts.py} and versioned; every cached output records the
+prompt version and model.
+
+\paragraph{Model and inputs.}
+The default model is Qwen3-VL-4B-Instruct (2B when GPU memory is tight),
+loaded with Hugging Face transformers or served by any OpenAI-compatible
+server such as vLLM. Each call receives the $N=8$ frames of the chunk, resized
+so that every frame has at most $448\times448$ pixels, and the chunk's
+transcript. Resizing in our code, rather than through processor options,
+makes the visual-token cost independent of the processor version. Decoding is
+greedy, so outputs are reproducible for fixed inputs.
+
+\paragraph{Validation and repair.}
+The first balanced JSON object in the output is parsed and validated with
+Pydantic. On failure the error and the faulty output are sent back once; a
+chunk that still fails is stored as an empty observation flagged
+\texttt{ok=false}, and the failure rate is reported. With the vLLM backend the
+request carries the JSON schema, and decoding is constrained to it.
+Normalisation lower-cases names, maps unknown categories to \emph{other},
+merges duplicate names within a chunk, and drops references in events and
+relations to undeclared entities (counted and reported).
+
+\paragraph{Memory-agnostic, resumable, frozen.}
+Perception never sees the memory (\cref{sec:overview}). Progress is appended
+to a partial file, so an interrupted run resumes where it stopped; the final
+\cmd{observations.jsonl} is hashed into the manifest and frozen with
+\cmd{memvid perception-freeze}.
+
+\paragraph{Audit.}
+\cmd{memvid perception-audit} samples 20 chunks and writes a sheet with a
+contact sheet of each chunk's frames. The annotator counts false entities and
+missed salient events. The false-entity rate (false entities over listed
+entities) must be below 15\%; together with the missed-event rate it bounds
+every accuracy reported later, since all conditions inherit perception
+errors.
+
+\generated{perception_stats.tex}{perception statistics, produced by
+\cmd{memvid perceive}, \cmd{memvid perception-audit-summary} and
+\cmd{memvid export-tex}.}

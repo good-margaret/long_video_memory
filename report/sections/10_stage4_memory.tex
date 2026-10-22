@@ -1,0 +1,110 @@
+\section{Stage 4: memory organisations}\label{sec:stage4}
+
+All organisations write to one store that keeps the records, an append-only
+operation log, an exact vector index over record texts, and the memory size
+$\toklen{M}=\sum_{r\in M}|\tau(\sigma(r))|$, maintained incrementally. The
+serialisation $\sigma(r)$ of a record is one line that does not depend on any
+other record (names of referenced entities are copied into the record), so the
+per-record counts are exact and the budget can be checked after every
+operation. \Cref{tab:record-lines} shows the line formats.
+
+\begin{table}[ht]
+\centering\small
+\caption{Record types and their serialisation $\sigma(r)$.}\label{tab:record-lines}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+Type & Line \\
+\midrule
+Entity & \texttt{[E3] entity red mug (container) aka cup: color=red | seen 00:01:20-00:14:00} \\
+Event & \texttt{[V12] 00:03:20-00:03:40 event: man pours water into red mug \{E1,E3\}} \\
+State change & \texttt{[S4] 00:12:00 change: red mug [E3] contents: water -> empty} \\
+Relation & \texttt{[R2] 00:05:00 relation: man [E1] holds drill [E5]} \\
+Note (C1, C2) & \texttt{[N7] 00:02:00-00:02:20 note: <free text>} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Structured memory (C3)}
+For each observation $o_i$ the update $U$ runs five operations in order.
+
+\paragraph{Entity resolution.}
+For every observed entity $e$ and every stored entity $x$ of a compatible
+category, the similarity is the largest cosine between the embedding of $e$'s
+name and those of $x$'s name and aliases, minus a penalty of 0.10 when either
+name is generic (``person'', ``tool'', \dots). Candidate pairs with similarity
+$\ge\tau_{\mathrm{low}}=0.60$ are processed greedily in decreasing order; an
+observed entity takes at most one stored entity and a stored entity is claimed
+at most once per chunk (two mugs seen together are two mugs). Pairs above
+$\tau_{\mathrm{high}}=0.80$ are linked; pairs in between are put to the LLM,
+which sees both descriptions with their attributes and times. Unmatched
+entities become new records. Every decision is logged with its similarity, for
+the merge audit. Names are compared, not attributes, because attributes
+legitimately change (a board is painted); the LLM sees attributes and can use
+them.
+
+\paragraph{State changes with debouncing.}
+For a linked entity, an observed attribute value that differs from the stored
+one opens a pending change. It is committed as a StateChange record, with time
+equal to the first observation of the new value and provenance equal to the
+observations that confirmed it, only after $k=2$ consecutive observations of
+that entity agree. A single noisy description therefore does not create a
+false change; the price is that a change is recorded one observation late.
+The ablation \emph{no\_debounce} sets $k=1$.
+
+\paragraph{Events, speech and relations.}
+Events are inserted with their resolved entity identifiers. An event of the
+immediately preceding chunk is extended instead when the new one has the same
+entity set, a similar description (cosine $\ge0.85$) \emph{and} no content
+word that the stored description lacks (a person stirring for a minute is one
+event). The last condition matters: the extended event keeps its original
+wording, so ``paints the board blue'' must not be merged into ``paints the
+board white''. The speech summary is stored as an event of
+modality \emph{speech}. Relations are deduplicated on
+(subject, predicate, object).
+
+\paragraph{Budget enforcement.}
+While $\toklen{M}>B$: (i)~the oldest uncompressed events outside the three
+most recent chunks are grouped into a window of 300~s and replaced by at most
+three coarser events written by the LLM, with provenance equal to the union of
+the originals (a window holding a single event keeps it verbatim); (ii)~when nothing is left to compress, the record with the
+lowest priority is deleted,
+\[
+\mathrm{prio}(r)=w_{\mathrm{rec}}\,\frac{t(r)-t_{\min}}{t_{\mathrm{now}}-t_{\min}}
++\begin{cases}
+w_{\mathrm{sal}}\,\mathrm{sal}(r)+w_{\mathrm{ref}}\,|\mathrm{ents}(r)| & \text{event}\\
+w_{\mathrm{sal}}+2w_{\mathrm{ref}} & \text{relation}\\
+2w_{\mathrm{sal}}+w_{\mathrm{sc}} & \text{state change}\\
+w_{\mathrm{ent}}+w_{\mathrm{ref}}\cdot\#\text{references} & \text{entity}
+\end{cases}
+\]
+with $(w_{\mathrm{sal}},w_{\mathrm{ref}},w_{\mathrm{rec}},w_{\mathrm{sc}},w_{\mathrm{ent}})=(1,0.5,1,2,3)$.
+Entities and state changes are never compressed: they are compact and carry
+exactly the facts that object-change and cross-segment questions ask for
+(the first expectation in \cref{sec:rq}).
+
+\subsection{Baselines}
+\begin{description}[nosep]
+\item[C1 rolling summary.] After each chunk the LLM rewrites one summary from
+  the previous summary and the new observation, under a word limit derived
+  from $B$; the result is cut to the longest word prefix whose line fits $B$
+  exactly. The answerer receives the whole summary.
+\item[C2 flat log.] One note per observation (its text serialisation);
+  the oldest note is evicted while $\toklen{M}>B$.
+\item[C4 unbounded log.] C2 without eviction: the upper bound for this
+  perception. Its final size defines the budgets: $B_k=f_k\cdot\toklen{M_{\mathrm{C4}}}$
+  with $f=(0.02,0.05,0.15)$.
+\end{description}
+The ablations of C3 switch off entity resolution, state changes, compression,
+or debouncing, one at a time.
+
+\subsection{Retrieval and answering}\label{sec:retrieval}
+For C2--C4, the score of a record is its cosine similarity to the question,
+plus 0.25 when it is, or refers to, an entity whose name occurs in the
+question, plus $0.20\,w_t$ for temporal cues: \emph{beginning/first} favours
+early records, \emph{end/last} late ones, and \emph{after X}/\emph{before X}
+favours records just after/before the best match for X with weight
+$\exp(-\text{gap}/300\,\mathrm{s})$. The top 40 records are taken in score
+order while they fit $B_R=1500$ tokens, and presented in temporal order. The
+answerer returns an answer, the identifiers of the supporting records, and a
+confidence; citations of records it was not shown are discarded and counted.
+The time support of the cited records is the predicted evidence $I(C)$.
