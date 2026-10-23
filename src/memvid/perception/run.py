@@ -203,7 +203,9 @@ def run_perception(cfg: ProjectConfig, vlm: GenerativeModel, *, force: bool = Fa
 
     todo = [c for c in chunks if c.chunk_id not in done]
     if limit is not None:
-        todo = todo[:limit]
+        # In a resumed smoke run, limit is the total target rather than the
+        # number of additional chunks to append to the partial file.
+        todo = todo[:max(0, limit - len(done))]
     t0 = time.perf_counter()
     with open(partial, "a", encoding="utf-8") as fh:
         for c in progress_iter(todo, desc="perception", enabled=progress):
