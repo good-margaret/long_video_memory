@@ -8,7 +8,7 @@ whenever a template changes, so stale caches are detected.
 
 from __future__ import annotations
 
-PROMPT_VERSION = "3"
+PROMPT_VERSION = "4"
 
 CATEGORIES = [
     "person", "tool", "container", "food", "material", "furniture", "device", "vehicle",
@@ -65,6 +65,31 @@ Reply with ONE JSON object and nothing else, in this form:
  "events": [{{"description": "man pours coffee into red mug", "entities": ["man", "red mug"], "salience": 2}}],
  "relations": [["man", "holds", "red mug"]],
  "speech_summary": ""}}
+"""
+
+PERCEIVE_RESCUE = """### TASK: perceive_rescue
+Inspect these {n_frames} video frames in chronological order and read the transcript.
+
+This is a recovery request because an earlier answer was empty. The segment is not assumed to be empty.
+- List concrete visible people, objects, places and readable text as entities.
+- Describe visible actions or changes as events. If a person changes location, handles an object, enters or leaves, report it.
+- Use the exact entity names from entities inside events and relations.
+- Summarize the transcript in speech_summary. If the transcript is not "(no speech)", speech_summary must not be empty.
+- Do not invent details, but do not omit clearly visible content.
+
+### CHUNK
+id: {chunk_id}; time: {t_start} to {t_end}
+
+### TRANSCRIPT
+{transcript}
+
+### OUTPUT
+Return only one JSON object with all four keys:
+{{"entities": [{{"name": "...", "category": "person", "attributes": {{}}}}],
+ "events": [{{"description": "...", "entities": ["..."], "salience": 2}}],
+ "relations": [["...", "...", "..."]],
+ "speech_summary": "..."}}
+Allowed categories: {categories}.
 """
 
 # ----------------------------------------------------------------------------- memory

@@ -29,7 +29,7 @@ from memvid.manifest import load_manifest, register_file, save_manifest
 from memvid.models.base import GenerativeModel
 from memvid.models.jsonutil import generate_validated
 from memvid.perception.schema import ChunkObservation, ModelObservation
-from memvid.prompts import CATEGORIES, PERCEIVE, PROMPT_VERSION
+from memvid.prompts import CATEGORIES, PERCEIVE, PERCEIVE_RESCUE, PROMPT_VERSION
 from memvid.schemas import Chunk, FrameRecord
 from memvid.timeutils import format_timestamp
 
@@ -54,6 +54,18 @@ def build_prompt(chunk: Chunk, n_frames: int, max_chars: int) -> str:
         n_frames=n_frames, duration=chunk.duration, categories=", ".join(CATEGORIES),
         chunk_id=chunk.chunk_id, t_start=format_timestamp(chunk.t_start, decimals=0),
         t_end=format_timestamp(chunk.t_end, decimals=0), transcript=transcript,
+    )
+
+
+def build_rescue_prompt(chunk: Chunk, n_frames: int, max_chars: int) -> str:
+    transcript = chunk.transcript_text.strip()[:max_chars] or "(no speech)"
+    return PERCEIVE_RESCUE.format(
+        n_frames=n_frames,
+        categories=", ".join(CATEGORIES),
+        chunk_id=chunk.chunk_id,
+        t_start=format_timestamp(chunk.t_start, decimals=0),
+        t_end=format_timestamp(chunk.t_end, decimals=0),
+        transcript=transcript,
     )
 
 
@@ -108,9 +120,24 @@ def perceive_chunk(cfg: ProjectConfig, vlm: GenerativeModel, chunk: Chunk,
                              max_new_tokens=cfg.models.vlm.max_new_tokens,
                              repair_attempts=pc.repair_attempts)
     transcript = chunk.transcript_text.strip()[:pc.max_transcript_chars]
+    rescue_used = False
+    if not res.ok:
+        rescue_used = True
+        rescue_prompt = build_rescue_prompt(chunk, len(images), pc.max_transcript_chars)
+        log.warning("standard perception was empty for chunk %d; trying visual rescue",
+                    chunk.chunk_id)
+        res = generate_validated(
+            vlm,
+            rescue_prompt,
+            ModelObservation,
+            images=images,
+            max_new_tokens=cfg.models.vlm.max_new_tokens,
+            repair_attempts=1,
+        )
     if res.ok:
         obs = ChunkObservation.from_model(chunk.chunk_id, chunk.t_start, chunk.t_end, res.value,
                                           res.attempts)
+        obs.rescue_used = rescue_used
         if transcript and not obs.speech_summary:
             obs.speech_summary = transcript
             obs.fallback = "transcript_floor"
@@ -129,6 +156,7 @@ def perceive_chunk(cfg: ProjectConfig, vlm: GenerativeModel, chunk: Chunk,
             speech_summary=transcript,
             attempts=res.attempts,
             fallback="transcript_after_vlm_failure",
+            rescue_used=rescue_used,
         )
     return ChunkObservation(chunk_id=chunk.chunk_id, t_start=chunk.t_start, t_end=chunk.t_end,
                             ok=False, error=res.error, attempts=res.attempts)
@@ -230,6 +258,7 @@ def observation_stats(obs: list[ChunkObservation]) -> dict[str, Any]:
         "mean_relations": round(sum(len(o.relations) for o in ok) / max(1, len(ok)), 2),
         "chunks_with_speech_summary": sum(1 for o in ok if o.speech_summary),
         "transcript_fallbacks": sum(1 for o in ok if o.fallback is not None),
+        "vlm_rescues": sum(1 for o in ok if o.rescue_used),
         "dropped_refs": sum(o.dropped_refs for o in obs),
         "categories": dict(Counter(e.category for o in ok for e in o.entities).most_common()),
     }

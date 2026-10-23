@@ -11,7 +11,9 @@ from pydantic import ValidationError
 from memvid.config import ASRConfig, load_config
 from memvid.evaluation.metrics import interval_distance, summarize_rows
 from memvid.preprocess.asr import import_srt, load_pcm_wav
+from memvid.perception.run import build_rescue_prompt
 from memvid.perception.schema import ChunkObservation, ModelObservation
+from memvid.schemas import Chunk
 
 
 class ObservationValidationTest(unittest.TestCase):
@@ -42,6 +44,18 @@ class ObservationValidationTest(unittest.TestCase):
         )
         self.assertTrue(observation.ok)
         self.assertEqual(observation.fallback, "transcript_after_vlm_failure")
+
+    def test_visual_rescue_prompt_requires_spoken_and_visible_content(self) -> None:
+        chunk = Chunk(
+            chunk_id=2,
+            t_start=40.0,
+            t_end=60.0,
+            transcript_text="Welcome to the city of Nome.",
+        )
+        prompt = build_rescue_prompt(chunk, n_frames=4, max_chars=2000)
+        self.assertIn("recovery request", prompt)
+        self.assertIn("Welcome to the city of Nome.", prompt)
+        self.assertIn("clearly visible content", prompt)
 
 
 class SubtitleImportTest(unittest.TestCase):
