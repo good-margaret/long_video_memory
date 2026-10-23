@@ -54,6 +54,12 @@ class AudioConfig(_Strict):
 
 
 class ASRConfig(_Strict):
+    source: Literal["whisper", "srt"] = Field(
+        "whisper", description="whisper: transcribe extracted audio; srt: import timed subtitles."
+    )
+    subtitle_path: str | None = Field(
+        None, description="SRT file used when source=srt; relative paths use the project root."
+    )
     model_size: str = "large-v3"
     device: Literal["auto", "cuda", "cpu"] = "auto"
     compute_type: str = Field("auto", description="auto -> float16 on CUDA, int8 on CPU.")
@@ -71,6 +77,12 @@ class ASRConfig(_Strict):
     suspicious_no_speech_prob: float = Field(
         0.6, ge=0, le=1, description="Segments above this are flagged in statistics."
     )
+
+    @model_validator(mode="after")
+    def _source_has_input(self) -> ASRConfig:
+        if self.source == "srt" and not self.subtitle_path:
+            raise ValueError("asr.subtitle_path is required when asr.source=srt")
+        return self
 
 
 class ChunkingConfig(_Strict):

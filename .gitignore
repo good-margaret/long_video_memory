@@ -13,6 +13,8 @@ dist/
 #   git add -f data/derived/<video_id>/manifest.json
 data/raw/*
 !data/raw/.gitkeep
+data/external/*
+!data/external/.gitkeep
 data/derived/*
 !data/derived/.gitkeep
 runs/*

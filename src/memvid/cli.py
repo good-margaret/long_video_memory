@@ -282,7 +282,7 @@ COMMANDS: dict[str, tuple[Any, str, dict[str, Any]]] = {
                          "--duration": {"type": float, "default": 90.0}}),
     "probe": (probe, "Probe video metadata", {**FORCE, "--no-hash": FLAG}),
     "extract-audio": (extract_audio, "Extract 16 kHz mono audio", FORCE),
-    "transcribe": (transcribe, "Transcribe with faster-whisper", FORCE),
+    "transcribe": (transcribe, "Create a transcript with Whisper or import configured SRT", FORCE),
     "chunk": (chunk, "Build fixed-length chunks", {**FORCE, "--allow-missing-transcript": FLAG}),
     "sample-frames": (sample_frames, "Sample frames per chunk", {**FORCE, **QUIET}),
     "preprocess": (preprocess, "Probe, extract audio, transcribe, chunk and sample frames",

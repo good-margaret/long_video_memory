@@ -46,6 +46,7 @@ class AnswerRecord(BaseModel):
     invalid_citations: list[str] = Field(default_factory=list)
     confidence: str
     retrieved_ids: list[str]
+    retrieval_ranked_ids: list[str] = Field(default_factory=list)
     retrieved_tokens: int
     cues: list[str] = Field(default_factory=list)
     matched_entities: list[str] = Field(default_factory=list)
@@ -83,7 +84,8 @@ def answer_question(q: Question, ret: Retrieved, llm: GenerativeModel,
         cited, invalid, ans, conf = [], [], "", "low"
     return AnswerRecord(
         qid=q.id, answer=ans, cited_ids=cited, invalid_citations=invalid, confidence=conf,
-        retrieved_ids=[r.id for r in ret.records], retrieved_tokens=ret.tokens, cues=ret.cues,
+        retrieved_ids=[r.id for r in ret.records], retrieval_ranked_ids=ret.ranked_ids,
+        retrieved_tokens=ret.tokens, cues=ret.cues,
         matched_entities=ret.matched_entities,
         cited_intervals=support([by_id[i] for i in cited], bounds),
         retrieved_intervals=support(ret.records, bounds),

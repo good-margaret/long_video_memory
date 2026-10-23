@@ -30,6 +30,7 @@ _BEFORE = re.compile(r"\bbefore\s+(.+?)(?:\?|,|$)", re.I)
 @dataclass
 class Retrieved:
     records: list[RecordT]
+    ranked_ids: list[str]
     scores: dict[str, float]
     tokens: int
     matched_entities: list[str]
@@ -53,10 +54,11 @@ def retrieve(store: MemoryStore, question: str, cfg: RetrievalConfig, duration: 
     """whole_memory=True (used for C1): return every record, unranked."""
     recs = list(store.records.values())
     if whole_memory:
-        return Retrieved(records=recs, scores={r.id: 1.0 for r in recs}, tokens=store.tokens(),
+        return Retrieved(records=recs, ranked_ids=[r.id for r in recs],
+                         scores={r.id: 1.0 for r in recs}, tokens=store.tokens(),
                          matched_entities=[], cues=["whole-memory"])
     if not recs:
-        return Retrieved(records=[], scores={}, tokens=0, matched_entities=[], cues=[])
+        return Retrieved(records=[], ranked_ids=[], scores={}, tokens=0, matched_entities=[], cues=[])
     sem = store.index.scores(store.embedder.encode_one(question))
     ents = set(matched_entities(store, question))
     cues: list[str] = []
@@ -100,6 +102,8 @@ def retrieve(store: MemoryStore, question: str, cfg: RetrievalConfig, duration: 
             continue
         chosen.append(r)
         used += n
+    ranked_ids = [r.id for r in chosen]
     chosen.sort(key=lambda r: (record_span(r)[0], r.id))
-    return Retrieved(records=chosen, scores=scores, tokens=used, matched_entities=sorted(ents),
+    return Retrieved(records=chosen, ranked_ids=ranked_ids, scores=scores, tokens=used,
+                     matched_entities=sorted(ents),
                      cues=cues)

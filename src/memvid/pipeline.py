@@ -158,9 +158,13 @@ class Pipeline:
     def transcribe(self, *, force: bool = False) -> list[TranscriptSegment]:
         m = self.manifest()
         self._refuse_if_frozen(m, "transcript", "asr_info", force=force)
-        if not self.audio_path.is_file():
+        if self.cfg.asr.source == "whisper" and not self.audio_path.is_file():
             raise PipelineStateError("audio.wav missing: run `memvid extract-audio` first")
-        segments, info = asr_mod.transcribe(self.audio_path, self.cfg.asr)
+        if self.cfg.asr.source == "srt":
+            subtitle_path = self.cfg.resolve(self.cfg.asr.subtitle_path or "")
+            segments, info = asr_mod.import_srt(subtitle_path, self.cfg.asr)
+        else:
+            segments, info = asr_mod.transcribe(self.audio_path, self.cfg.asr)
         write_jsonl(self.transcript_path, segments)
         write_json(self.asr_info_path, info)
         h = self.cfg.section_hash("asr", "audio")
@@ -171,6 +175,7 @@ class Pipeline:
                 segments, self.video_info().duration_s, self.cfg.asr.suspicious_no_speech_prob
             ),
             "language": info.language,
+            "source": info.source,
             "language_probability": info.language_probability,
             "model_size": info.model_size,
             "device": info.device,

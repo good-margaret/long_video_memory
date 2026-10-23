@@ -16,6 +16,7 @@ Design choices (see report, Section "Preprocessing"):
 from __future__ import annotations
 
 import logging
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -23,7 +24,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from memvid.config import ASRConfig
-from memvid.errors import MissingDependencyError
+from memvid.errors import MemvidError, MissingDependencyError
 from memvid.schemas import TranscriptSegment
 from memvid.timeutils import merge_intervals
 
@@ -31,6 +32,7 @@ log = logging.getLogger(__name__)
 
 
 class ASRInfo(BaseModel):
+    source: str = "whisper"
     model_size: str
     device: str
     compute_type: str
@@ -41,6 +43,70 @@ class ASRInfo(BaseModel):
     wall_time_s: float
     real_time_factor: float | None  # wall time / audio duration (lower is faster)
     settings: dict[str, Any]
+
+
+_SRT_TIME = re.compile(
+    r"^\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*"
+    r"(\d{1,2}):(\d{2}):(\d{2})[,.](\d{3})(?:\s+.*)?$"
+)
+_SRT_TAG = re.compile(r"<[^>]+>")
+
+
+def _srt_seconds(parts: tuple[str, str, str, str]) -> float:
+    h, m, s, ms = (int(x) for x in parts)
+    return 3600 * h + 60 * m + s + ms / 1000
+
+
+def import_srt(path: str | Path, cfg: ASRConfig) -> tuple[list[TranscriptSegment], ASRInfo]:
+    """Import ordinary SRT subtitles into the transcript contract used by the pipeline."""
+    path = Path(path)
+    if not path.is_file():
+        raise MemvidError(f"subtitle file not found: {path}")
+    t0 = time.perf_counter()
+    text = path.read_text(encoding="utf-8-sig")
+    blocks = re.split(r"\r?\n\s*\r?\n", text.strip())
+    segments: list[TranscriptSegment] = []
+    for block_no, block in enumerate(blocks, start=1):
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if not lines:
+            continue
+        time_idx = next((i for i, line in enumerate(lines) if "-->" in line), None)
+        if time_idx is None:
+            continue
+        match = _SRT_TIME.match(lines[time_idx])
+        if match is None:
+            raise MemvidError(f"{path}: subtitle block {block_no} has an invalid timestamp")
+        start = _srt_seconds(match.groups()[:4])
+        end = _srt_seconds(match.groups()[4:])
+        body = " ".join(lines[time_idx + 1 :])
+        body = _SRT_TAG.sub("", body)
+        body = re.sub(r"\s+", " ", body).strip()
+        if not body:
+            continue
+        segments.append(
+            TranscriptSegment(
+                segment_id=len(segments), start=round(start, 3), end=round(end, 3), text=body
+            )
+        )
+    if not segments:
+        raise MemvidError(f"{path}: no subtitle segments found")
+    if any(b.start < a.start for a, b in zip(segments, segments[1:], strict=False)):
+        raise MemvidError(f"{path}: subtitle timestamps are not ordered")
+    wall = time.perf_counter() - t0
+    duration = max(s.end for s in segments)
+    return segments, ASRInfo(
+        source="srt",
+        model_size="provided-subtitles",
+        device="cpu",
+        compute_type="text",
+        language=cfg.language,
+        language_probability=None,
+        audio_duration_s=duration,
+        duration_after_vad_s=None,
+        wall_time_s=round(wall, 3),
+        real_time_factor=round(wall / duration, 6) if duration else None,
+        settings=cfg.model_dump(mode="json"),
+    )
 
 
 def _resolve_device(cfg: ASRConfig) -> tuple[str, str]:
@@ -98,6 +164,7 @@ def transcribe(audio_path: str | Path, cfg: ASRConfig) -> tuple[list[TranscriptS
     wall = time.perf_counter() - t0
     audio_d = getattr(info, "duration", None)
     asr_info = ASRInfo(
+        source="whisper",
         model_size=cfg.model_size,
         device=device,
         compute_type=compute_type,

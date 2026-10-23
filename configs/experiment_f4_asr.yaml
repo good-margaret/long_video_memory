@@ -1,0 +1,67 @@
+video:
+  video_id: KbahC-QCKU8
+  filename: KbahC-QCKU8.mp4
+
+paths:
+  raw_dir: data/raw
+  derived_dir: data/experiments/F4_ASR
+  annotations_dir: data/annotations
+  runs_dir: runs/experiments/F4_ASR
+  report_generated_dir: report/generated
+
+asr:
+  source: whisper
+  model_size: large-v3-turbo
+  device: auto
+  compute_type: auto
+  language: en
+  beam_size: 5
+  vad_filter: true
+  condition_on_previous_text: false
+  temperature_fallback: false
+  suspicious_no_speech_prob: 0.6
+
+chunking:
+  chunk_seconds: 20.0
+
+frames:
+  frames_per_chunk: 4
+  max_side: 768
+  jpeg_quality: 90
+
+models:
+  vlm:
+    backend: transformers
+    model_id: Qwen/Qwen3-VL-4B-Instruct
+    dtype: auto
+    device_map: auto
+    max_new_tokens: 1024
+  llm:
+    backend: transformers
+    model_id: Qwen/Qwen3-VL-4B-Instruct
+    dtype: auto
+    device_map: auto
+    max_new_tokens: 512
+  embedder: sentence-transformers
+  embedder_model: sentence-transformers/all-MiniLM-L6-v2
+  tokenizer: auto
+
+perception:
+  max_pixels: 200704
+  frames_per_chunk: null
+  max_transcript_chars: 2000
+  repair_attempts: 1
+  audit_size: 20
+  max_false_entity_rate: 0.15
+
+budgets:
+  mode: fraction
+  values: {B2: 0.05}
+
+experiment:
+  conditions: [C3]
+  ablations: []
+  ablation_budget: B2
+  split: test
+
+seed: 0

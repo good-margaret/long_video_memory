@@ -65,6 +65,38 @@ def _select(frames: list[FrameRecord], k: int | None) -> list[FrameRecord]:
     return [frames[i] for i in dict.fromkeys(idx)]
 
 
+def image_workload_stats(cfg: ProjectConfig, frames: list[FrameRecord]) -> dict[str, Any]:
+    """Deterministic input-size accounting for visual-budget experiments."""
+    by_chunk: dict[int, list[FrameRecord]] = {}
+    for frame in frames:
+        by_chunk.setdefault(frame.chunk_id, []).append(frame)
+    selected = [f for chunk in by_chunk.values() for f in _select(chunk, cfg.perception.frames_per_chunk)]
+    pixels = []
+    for frame in selected:
+        original = frame.width * frame.height
+        pixels.append(min(original, cfg.perception.max_pixels))
+    return {
+        "selected_frames": len(selected),
+        "selected_pixels": int(sum(pixels)),
+        "mean_selected_frames_per_chunk": round(len(selected) / max(1, len(by_chunk)), 3),
+        "mean_pixels_per_frame": round(sum(pixels) / max(1, len(pixels)), 1),
+    }
+
+
+def _peak_cuda_memory() -> dict[str, float] | None:
+    try:
+        import torch
+
+        if not torch.cuda.is_available():
+            return None
+        return {
+            f"cuda:{i}": round(torch.cuda.max_memory_allocated(i) / (1024**2), 1)
+            for i in range(torch.cuda.device_count())
+        }
+    except Exception:
+        return None
+
+
 def perceive_chunk(cfg: ProjectConfig, vlm: GenerativeModel, chunk: Chunk,
                    frames: list[FrameRecord]) -> ChunkObservation:
     pc = cfg.perception
@@ -101,6 +133,14 @@ def run_perception(cfg: ProjectConfig, vlm: GenerativeModel, *, force: bool = Fa
 
     signature = {"prompt_version": PROMPT_VERSION, "model": vlm.describe(),
                  "perception": cfg.perception.model_dump(mode="json")}
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            for device in range(torch.cuda.device_count()):
+                torch.cuda.reset_peak_memory_stats(device)
+    except Exception:
+        pass
     partial = d / "observations.partial.jsonl"
     done: dict[int, ChunkObservation] = {}
     if partial.is_file() and not force:
@@ -133,7 +173,15 @@ def run_perception(cfg: ProjectConfig, vlm: GenerativeModel, *, force: bool = Fa
     obs = [done[c.chunk_id] for c in chunks]
     write_jsonl(observations_path(cfg), obs)
     stats = observation_stats(obs)
-    info = {**signature, "wall_time_s_this_run": round(wall, 1), "stats": stats}
+    workload = image_workload_stats(cfg, frames)
+    info = {
+        **signature,
+        "wall_time_s_this_run": round(wall, 1),
+        "mean_wall_time_s_per_processed_chunk": round(wall / max(1, len(todo)), 3),
+        "peak_cuda_memory_mb": _peak_cuda_memory(),
+        "workload": workload,
+        "stats": stats,
+    }
     write_json(d / "perception_info.json", info)
     m = load_manifest(d, cfg.video.video_id)
     h = cfg.section_hash("perception", "models")
@@ -141,7 +189,10 @@ def run_perception(cfg: ProjectConfig, vlm: GenerativeModel, *, force: bool = Fa
     register_file(m, d, "perception_info", d / "perception_info.json", step="perceive", config_hash=h)
     m.stats["perception"] = {**stats, "model": vlm.describe().get("name"),
                              "prompt_version": PROMPT_VERSION,
-                             "max_pixels": cfg.perception.max_pixels}
+                             "max_pixels": cfg.perception.max_pixels,
+                             **workload,
+                             "wall_time_s": round(wall, 1),
+                             "peak_cuda_memory_mb": info["peak_cuda_memory_mb"]}
     save_manifest(d, m)
     return obs
 

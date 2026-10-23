@@ -37,7 +37,7 @@ models = ["torch>=2.3", "transformers>=4.57", "accelerate>=0.30"]
 # Sentence embeddings for entity resolution and retrieval (Stage 4).
 memory = ["sentence-transformers>=3.0"]
 # Figures (Stage 5) and the results notebook.
-analysis = ["matplotlib>=3.8", "pandas>=2.0"]
+analysis = ["matplotlib>=3.8", "pandas>=2.0", "jiwer>=3.0"]
 # Interactive demo (Stage 5).
 demo = ["gradio>=4.40", "matplotlib>=3.8"]
 # Linting.

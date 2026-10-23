@@ -245,7 +245,38 @@ The SQLite run file can be inspected directly, e.g.
 
 ---
 
-## 7. Development
+## 7. Visual-input and transcript-source experiment
+
+The controlled extension compares four conditions on the same video and questions:
+
+| Config | Frames per 20 s | Transcript |
+|---|---:|---|
+| `experiment_f4_asr.yaml` | 4 | Whisper `large-v3-turbo` |
+| `experiment_f8_asr.yaml` | 8 | Whisper `large-v3-turbo` |
+| `experiment_f4_srt.yaml` | 4 | provided SRT |
+| `experiment_f8_srt.yaml` | 8 | provided SRT |
+
+The SRT file is not committed. Put it at `data/external/Original audio.srt`; it is an
+explicit subtitle-assisted condition, while Whisper remains the end-to-end baseline.
+The Kaggle notebooks are:
+
+* `notebooks/kaggle_smoke_test.ipynb`: three real Qwen3-VL chunks;
+* `notebooks/kaggle_input_budget_experiment.ipynb`: the complete 2 x 2 experiment.
+
+After all observations are frozen, run:
+
+```bash
+python scripts/input_budget_experiment.py --split test
+python scripts/compare_transcripts.py
+```
+
+`F8_ASR` resolves B2 once. The runner reuses that absolute token count for all four
+conditions, then reports accuracy by modality, Recall@K, MRR, temporal grounding,
+paired McNemar comparisons and perception cost.
+
+---
+
+## 8. Development
 
 ```bash
 ruff check src scripts

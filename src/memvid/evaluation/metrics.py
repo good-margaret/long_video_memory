@@ -33,7 +33,15 @@ from memvid.memory.systems import parse_condition
 from memvid.models.base import GenerativeModel
 from memvid.pipeline import video_duration
 from memvid.questions.manage import load_questions
-from memvid.timeutils import overlap_length, tiou, total_length
+from memvid.timeutils import merge_intervals, overlap_length, tiou, total_length
+
+
+def interval_distance(a: list[tuple[float, float]], b: list[tuple[float, float]]) -> float | None:
+    """Minimum gap in seconds; zero means that the interval unions overlap."""
+    aa, bb = merge_intervals(a), merge_intervals(b)
+    if not aa or not bb:
+        return None
+    return min(max(0.0, c - y, x - d) for x, y in aa for c, d in bb)
 
 
 class JudgeCache:
@@ -89,6 +97,13 @@ def evaluate_run(cfg: ProjectConfig, rdir: Path, split: str, *, judge: Generativ
                 correct, method = cache.cache[key], "judge"
         gt = list(q.gt_intervals)
         per_record = base != "C1"
+        ranked_ids = a.retrieval_ranked_ids or a.retrieved_ids
+        relevant_ranks = [
+            rank for rank, rid in enumerate(ranked_ids, start=1)
+            if rid in saved.records and record_overlaps(saved.records[rid], saved.bounds, gt)
+        ]
+        first_rank = min(relevant_ranks, default=None)
+        temporal_error = interval_distance(a.retrieved_intervals, gt) if per_record else None
         rows.append({
             "run": rdir.name, "condition": info["condition"], "base": base, "ablation": ablation,
             "budget": info["budget_name"], "budget_tokens": info["budget_tokens"],
@@ -102,6 +117,14 @@ def evaluate_run(cfg: ProjectConfig, rdir: Path, split: str, *, judge: Generativ
                             if a.cited_intervals else 0.0) if per_record else None,
             "tiou": tiou(a.cited_intervals, gt) if per_record else None,
             "retrieved": (overlap_length(a.retrieved_intervals, gt) > 0) if per_record else None,
+            "recall_at_1": (any(rank <= 1 for rank in relevant_ranks)) if per_record else None,
+            "recall_at_5": (any(rank <= 5 for rank in relevant_ranks)) if per_record else None,
+            "recall_at_10": (any(rank <= 10 for rank in relevant_ranks)) if per_record else None,
+            "first_relevant_rank": first_rank if per_record else None,
+            "reciprocal_rank": (1.0 / first_rank if first_rank else 0.0) if per_record else None,
+            "temporal_error_s": temporal_error,
+            "temporal_hit_20s": (temporal_error <= 20) if temporal_error is not None else None,
+            "temporal_hit_60s": (temporal_error <= 60) if temporal_error is not None else None,
             "survived": any(record_overlaps(r, saved.bounds, gt) for r in saved.records.values()
                             if r.kind != "entity") if per_record else None,
             "heuristic_models": info.get("heuristic_models", False),
@@ -130,10 +153,23 @@ def summarize_rows(rows: list[dict[str, Any]], n_boot: int = 10000, seed: int = 
         "g_precision": _mean_ci(col("g_precision"), n_boot, seed),
         "tiou": _mean_ci(col("tiou"), n_boot, seed),
         "retrieved": _mean_ci(col("retrieved"), n_boot, seed),
+        "recall_at_1": _mean_ci(col("recall_at_1"), n_boot, seed),
+        "recall_at_5": _mean_ci(col("recall_at_5"), n_boot, seed),
+        "recall_at_10": _mean_ci(col("recall_at_10"), n_boot, seed),
+        "mrr": _mean_ci(col("reciprocal_rank"), n_boot, seed),
+        "temporal_error_s": _mean_ci(col("temporal_error_s"), n_boot, seed),
+        "temporal_hit_20s": _mean_ci(col("temporal_hit_20s"), n_boot, seed),
+        "temporal_hit_60s": _mean_ci(col("temporal_hit_60s"), n_boot, seed),
         "survived": _mean_ci(col("survived"), n_boot, seed),
         "by_type": {},
+        "by_modality": {},
     }
     for t in sorted({r["type"] for r in rows}):
         sub = [r for r in rows if r["type"] == t]
         out["by_type"][t] = _mean_ci([float(r["correct"]) for r in sub], n_boot, seed)
+    for modality in sorted({r["modality"] for r in rows}):
+        sub = [r for r in rows if r["modality"] == modality]
+        out["by_modality"][modality] = _mean_ci(
+            [float(r["correct"]) for r in sub], n_boot, seed
+        )
     return out
