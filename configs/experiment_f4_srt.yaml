@@ -43,7 +43,7 @@ perception:
   max_pixels: 200704
   frames_per_chunk: null
   max_transcript_chars: 2000
-  repair_attempts: 1
+  repair_attempts: 2
   audit_size: 20
   max_false_entity_rate: 0.15
 

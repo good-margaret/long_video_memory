@@ -6,10 +6,31 @@ import wave
 from pathlib import Path
 
 import numpy as np
+from pydantic import ValidationError
 
 from memvid.config import ASRConfig, load_config
 from memvid.evaluation.metrics import interval_distance, summarize_rows
 from memvid.preprocess.asr import import_srt, load_pcm_wav
+from memvid.perception.schema import ModelObservation
+
+
+class ObservationValidationTest(unittest.TestCase):
+    def test_rejects_empty_model_observation(self) -> None:
+        with self.assertRaises(ValidationError):
+            ModelObservation.model_validate(
+                {"entities": [], "events": [], "relations": [], "speech_summary": ""}
+            )
+
+    def test_accepts_spoken_information_without_visual_entities(self) -> None:
+        observation = ModelObservation.model_validate(
+            {
+                "entities": [],
+                "events": [],
+                "relations": [],
+                "speech_summary": "The speaker introduces the experiment.",
+            }
+        )
+        self.assertTrue(observation.speech_summary)
 
 
 class SubtitleImportTest(unittest.TestCase):

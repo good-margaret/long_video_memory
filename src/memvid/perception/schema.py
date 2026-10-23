@@ -95,10 +95,10 @@ class ModelObservation(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    entities: list[ObsEntity] = Field(default_factory=list)
-    events: list[ObsEvent] = Field(default_factory=list)
-    relations: list[list[str]] = Field(default_factory=list)
-    speech_summary: str = ""
+    entities: list[ObsEntity]
+    events: list[ObsEvent]
+    relations: list[list[str]]
+    speech_summary: str
 
     @field_validator("relations", mode="before")
     @classmethod
@@ -115,6 +115,15 @@ class ModelObservation(BaseModel):
     @classmethod
     def _speech(cls, v):
         return "" if v is None else _WS.sub(" ", str(v)).strip()
+
+    @model_validator(mode="after")
+    def _require_content(self) -> ModelObservation:
+        """Reject syntactically valid but useless empty model responses."""
+        if not (self.entities or self.events or self.relations or self.speech_summary):
+            raise ValueError(
+                "observation is empty; extract concrete visual or spoken information"
+            )
+        return self
 
 
 class ChunkObservation(BaseModel):

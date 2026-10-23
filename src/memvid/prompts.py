@@ -8,7 +8,7 @@ whenever a template changes, so stale caches are detected.
 
 from __future__ import annotations
 
-PROMPT_VERSION = "1"
+PROMPT_VERSION = "2"
 
 CATEGORIES = [
     "person", "tool", "container", "food", "material", "furniture", "device", "vehicle",
@@ -46,10 +46,12 @@ You see {n_frames} frames sampled uniformly, in temporal order, from a {duration
 
 Rules:
 - Report only what is visible in the frames or said in the transcript. Do not guess or infer what happens outside this segment.
+- Do not return an empty object or leave every field empty. Extract concrete information whenever the frames or transcript contain it.
 - entities: each distinct person, object, animal, substance or text that takes part in what happens. "name" is a short noun phrase with distinguishing features ("red mug", "man in blue shirt", "pine board"). "category" is one of: {categories}. "attributes" maps property names to short concrete values, e.g. {{"color": "white", "state": "half painted", "count": "4", "location": "on workbench", "contents": "water"}}. Omit unknown attributes.
 - events: what happens, one present-tense sentence each, using entity names exactly as in "entities"; "salience" is 3 for the main activity of the video, 2 for notable actions, 1 for background.
 - relations: [subject, predicate, object] facts between entities ("man", "holds", "drill"), names exactly as in "entities".
-- speech_summary: what is said, in 1-3 sentences, keeping names, numbers and stated reasons; "" if there is no speech.
+- speech_summary: what is said, in 1-3 sentences, keeping names, numbers and stated reasons. If the transcript contains speech, this field must not be empty; use "" only when the transcript is exactly "(no speech)".
+- Include all four top-level keys shown below, even when one of their arrays is empty.
 
 ### CHUNK
 id: {chunk_id}; time: {t_start} to {t_end}

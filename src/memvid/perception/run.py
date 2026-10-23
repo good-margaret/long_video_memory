@@ -110,6 +110,9 @@ def perceive_chunk(cfg: ProjectConfig, vlm: GenerativeModel, chunk: Chunk,
     if res.ok:
         return ChunkObservation.from_model(chunk.chunk_id, chunk.t_start, chunk.t_end, res.value,
                                            res.attempts)
+    raw = res.raw[-1][-1000:] if res.raw else "(no model output)"
+    log.warning("perception failed for chunk %d: %s; last output: %r",
+                chunk.chunk_id, res.error, raw)
     return ChunkObservation(chunk_id=chunk.chunk_id, t_start=chunk.t_start, t_end=chunk.t_end,
                             ok=False, error=res.error, attempts=res.attempts)
 
