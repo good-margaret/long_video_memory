@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import wave
 from pathlib import Path
+
+import numpy as np
 
 from memvid.config import ASRConfig, load_config
 from memvid.evaluation.metrics import interval_distance, summarize_rows
-from memvid.preprocess.asr import import_srt
+from memvid.preprocess.asr import import_srt, load_pcm_wav
 
 
 class SubtitleImportTest(unittest.TestCase):
@@ -28,6 +31,18 @@ Second line
         self.assertEqual([s.text for s in segments], ["Hello world", "Second line"])
         self.assertEqual((segments[0].start, segments[0].end), (1.0, 2.5))
         self.assertEqual(info.source, "srt")
+
+    def test_loads_pcm_wav_without_pyav(self) -> None:
+        samples = np.array([0, 16384, -16384, 32767], dtype="<i2")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "audio.wav"
+            with wave.open(str(path), "wb") as handle:
+                handle.setnchannels(1)
+                handle.setsampwidth(2)
+                handle.setframerate(16000)
+                handle.writeframes(samples.tobytes())
+            loaded = load_pcm_wav(path)
+        np.testing.assert_allclose(loaded, samples.astype(np.float32) / 32768.0)
 
 
 class MetricTest(unittest.TestCase):

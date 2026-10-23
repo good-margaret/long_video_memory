@@ -18,9 +18,11 @@ from __future__ import annotations
 import logging
 import re
 import time
+import wave
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from pydantic import BaseModel
 
 from memvid.config import ASRConfig
@@ -124,6 +126,30 @@ def _resolve_device(cfg: ASRConfig) -> tuple[str, str]:
     return device, compute_type
 
 
+def load_pcm_wav(path: str | Path, expected_sample_rate: int = 16000) -> np.ndarray:
+    """Load the pipeline's PCM WAV without PyAV.
+
+    faster-whisper accepts a float32 waveform directly. This avoids incompatibilities
+    between the PyAV version preinstalled in hosted notebooks and faster-whisper's
+    file-decoding wrapper.
+    """
+    path = Path(path)
+    with wave.open(str(path), "rb") as handle:
+        channels = handle.getnchannels()
+        sample_width = handle.getsampwidth()
+        sample_rate = handle.getframerate()
+        frames = handle.readframes(handle.getnframes())
+    if channels != 1:
+        raise MemvidError(f"expected mono WAV, got {channels} channels: {path}")
+    if sample_rate != expected_sample_rate:
+        raise MemvidError(
+            f"expected {expected_sample_rate} Hz WAV, got {sample_rate} Hz: {path}"
+        )
+    if sample_width != 2:
+        raise MemvidError(f"expected 16-bit PCM WAV, got {8 * sample_width}-bit: {path}")
+    return np.frombuffer(frames, dtype="<i2").astype(np.float32) / 32768.0
+
+
 def transcribe(audio_path: str | Path, cfg: ASRConfig) -> tuple[list[TranscriptSegment], ASRInfo]:
     try:
         from faster_whisper import WhisperModel  # type: ignore[import-not-found]
@@ -137,8 +163,9 @@ def transcribe(audio_path: str | Path, cfg: ASRConfig) -> tuple[list[TranscriptS
     model = WhisperModel(cfg.model_size, device=device, compute_type=compute_type)
 
     t0 = time.perf_counter()
+    audio = load_pcm_wav(audio_path)
     seg_iter, info = model.transcribe(
-        str(audio_path),
+        audio,
         language=cfg.language,
         beam_size=cfg.beam_size,
         vad_filter=cfg.vad_filter,
