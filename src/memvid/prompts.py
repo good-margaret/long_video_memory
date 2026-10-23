@@ -8,7 +8,7 @@ whenever a template changes, so stale caches are detected.
 
 from __future__ import annotations
 
-PROMPT_VERSION = "2"
+PROMPT_VERSION = "3"
 
 CATEGORIES = [
     "person", "tool", "container", "food", "material", "furniture", "device", "vehicle",

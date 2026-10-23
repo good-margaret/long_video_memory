@@ -107,12 +107,29 @@ def perceive_chunk(cfg: ProjectConfig, vlm: GenerativeModel, chunk: Chunk,
     res = generate_validated(vlm, prompt, ModelObservation, images=images,
                              max_new_tokens=cfg.models.vlm.max_new_tokens,
                              repair_attempts=pc.repair_attempts)
+    transcript = chunk.transcript_text.strip()[:pc.max_transcript_chars]
     if res.ok:
-        return ChunkObservation.from_model(chunk.chunk_id, chunk.t_start, chunk.t_end, res.value,
-                                           res.attempts)
+        obs = ChunkObservation.from_model(chunk.chunk_id, chunk.t_start, chunk.t_end, res.value,
+                                          res.attempts)
+        if transcript and not obs.speech_summary:
+            obs.speech_summary = transcript
+            obs.fallback = "transcript_floor"
+            log.warning("VLM omitted speech for chunk %d; preserving the source transcript",
+                        chunk.chunk_id)
+        return obs
     raw = res.raw[-1][-1000:] if res.raw else "(no model output)"
     log.warning("perception failed for chunk %d: %s; last output: %r",
                 chunk.chunk_id, res.error, raw)
+    if transcript:
+        log.warning("preserving the source transcript as fallback for chunk %d", chunk.chunk_id)
+        return ChunkObservation(
+            chunk_id=chunk.chunk_id,
+            t_start=chunk.t_start,
+            t_end=chunk.t_end,
+            speech_summary=transcript,
+            attempts=res.attempts,
+            fallback="transcript_after_vlm_failure",
+        )
     return ChunkObservation(chunk_id=chunk.chunk_id, t_start=chunk.t_start, t_end=chunk.t_end,
                             ok=False, error=res.error, attempts=res.attempts)
 
@@ -212,6 +229,7 @@ def observation_stats(obs: list[ChunkObservation]) -> dict[str, Any]:
         "mean_events": round(sum(len(o.events) for o in ok) / max(1, len(ok)), 2),
         "mean_relations": round(sum(len(o.relations) for o in ok) / max(1, len(ok)), 2),
         "chunks_with_speech_summary": sum(1 for o in ok if o.speech_summary),
+        "transcript_fallbacks": sum(1 for o in ok if o.fallback is not None),
         "dropped_refs": sum(o.dropped_refs for o in obs),
         "categories": dict(Counter(e.category for o in ok for e in o.entities).most_common()),
     }

@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from memvid.config import ASRConfig, load_config
 from memvid.evaluation.metrics import interval_distance, summarize_rows
 from memvid.preprocess.asr import import_srt, load_pcm_wav
-from memvid.perception.schema import ModelObservation
+from memvid.perception.schema import ChunkObservation, ModelObservation
 
 
 class ObservationValidationTest(unittest.TestCase):
@@ -31,6 +31,17 @@ class ObservationValidationTest(unittest.TestCase):
             }
         )
         self.assertTrue(observation.speech_summary)
+
+    def test_chunk_records_transcript_fallback(self) -> None:
+        observation = ChunkObservation(
+            chunk_id=2,
+            t_start=40.0,
+            t_end=60.0,
+            speech_summary="Welcome to the city of Nome.",
+            fallback="transcript_after_vlm_failure",
+        )
+        self.assertTrue(observation.ok)
+        self.assertEqual(observation.fallback, "transcript_after_vlm_failure")
 
 
 class SubtitleImportTest(unittest.TestCase):

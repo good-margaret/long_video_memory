@@ -140,6 +140,7 @@ class ChunkObservation(BaseModel):
     error: str | None = None
     attempts: int = 1
     dropped_refs: int = 0
+    fallback: str | None = None
 
     @model_validator(mode="after")
     def _normalise(self) -> ChunkObservation:
