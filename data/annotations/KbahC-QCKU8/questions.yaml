@@ -1,0 +1,391 @@
+# Evaluation set (Stage 2). Copy to data/annotations/<video_id>/questions.yaml.
+#
+# Write ALL questions before any memory is built, so they cannot be tailored to what
+# a particular memory happens to store. Aim for 60-80 questions, about 12-16 per type,
+# with evidence spread over the whole video (including the first 10 minutes).
+#
+# Fields
+#   id               unique, letters/digits/_/- (e.g. q001)
+#   question         the question as asked
+#   answer           reference answer; for multiple_choice the option LETTER
+#   accepted_answers optional list of other correct short answers
+#   answer_type      short_text | number | yes_no | multiple_choice
+#   options          multiple_choice only
+#   type             past_event | object_change | cross_segment | attribute_recall | speech
+#   gt_intervals     list of [start, end] containing the evidence ("mm:ss", "hh:mm:ss" or s)
+#   evidence_time    optional; latest moment whose information is needed (default: last end)
+#   modality         visual | speech | both
+#   notes            optional
+#
+# Then: memvid questions-validate, questions-split, questions-freeze
+
+video_id: KbahC-QCKU8
+annotator: "Assistant"
+questions:
+
+  - id: q001
+    question: "What gear does the presenter pack into his sled at the beginning of the journey?"
+    answer: "A"
+    options: ["Ice auger, canvas tent, and crab pots", "Chainsaw, propane heater, and wooden sled", "Kayak, fishing rod, and sleeping bag", "Thermal blankets, portable stove, and crossbow"]
+    answer_type: multiple_choice
+    type: attribute_recall
+    gt_intervals: [["00:01:05", "00:02:15"]]
+    modality: visual
+
+  - id: q002
+    question: "Why does Luke head out onto the sea ice near Kotzebue on Day 1?"
+    answer: "to set crab pots and fish through the ice"
+    accepted_answers: ["to set crab pots", "crab fishing and ice fishing", "setting king crab pots"]
+    answer_type: short_text
+    type: speech
+    gt_intervals: [["00:02:30", "00:03:10"]]
+    modality: speech
+
+  - id: q003
+    question: "Did the host drill the ice holes manually before using a power auger?"
+    answer: "no"
+    answer_type: yes_no
+    type: past_event
+    gt_intervals: [["00:03:45", "00:04:30"]]
+    modality: visual
+
+  - id: q004
+    question: "What color is the jacket worn by Luke when he sets his first crab pot?"
+    answer: "red"
+    accepted_answers: ["red and black", "red coat"]
+    answer_type: short_text
+    type: attribute_recall
+    gt_intervals: [["00:04:50", "00:05:30"]]
+    modality: visual
+
+  - id: q005
+    question: "What bait is used inside the crab pot when preparing it for the ice hole?"
+    answer: "herring"
+    accepted_answers: ["frozen fish", "herring fish", "bait fish"]
+    answer_type: short_text
+    type: speech
+    gt_intervals: [["00:05:40", "00:06:20"]]
+    modality: both
+
+  - id: q006
+    question: "How many king crabs are caught in the very first pot checked?"
+    answer: "0"
+    answer_type: number
+    type: attribute_recall
+    gt_intervals: [["00:07:15", "00:08:00"]]
+    modality: visual
+
+  - id: q007
+    question: "Which transport vehicle used in the first ten minutes appears again later during the ptarmigan hunt?"
+    answer: "snowmobile"
+    accepted_answers: ["snow machine", "snowmobile"]
+    answer_type: short_text
+    type: cross_segment
+    gt_intervals: [["00:01:30", "00:02:00"], ["00:22:10", "00:22:50"]]
+    modality: visual
+
+  - id: q008
+    question: "What change occurs to the ice hole after sitting overnight?"
+    answer: "it completely froze over with a thick ice crust"
+    accepted_answers: ["froze over", "ice formed over top", "frozen solid"]
+    answer_type: short_text
+    type: object_change
+    gt_intervals: [["00:09:10", "00:10:00"]]
+    evidence_time: "00:10:00"
+    modality: visual
+
+  - id: q009
+    question: "What tool does Luke use to chop away the new ice formed over the crab pot hole?"
+    answer: "an ice chisel"
+    accepted_answers: ["ice spud", "chisel", "ice axe"]
+    answer_type: short_text
+    type: attribute_recall
+    gt_intervals: [["00:10:05", "00:10:50"]]
+    modality: visual
+
+  - id: q010
+    question: "How many red king crabs are harvested in total from the successful crab pot?"
+    answer: "3"
+    answer_type: number
+    type: attribute_recall
+    gt_intervals: [["00:11:20", "00:12:30"]]
+    modality: visual
+
+  - id: q011
+    question: "What meal is prepared inside the tent using the freshly caught king crab legs?"
+    answer: "B"
+    options: ["Crab stew with rice", "Boiled crab legs dipped in melted butter", "Fried crab cake patties", "Smoked crab soup"]
+    answer_type: multiple_choice
+    type: past_event
+    gt_intervals: [["00:13:40", "00:15:30"]]
+    modality: visual
+
+  - id: q012
+    question: "Does the host catch any fish on his first ice fishing attempt?"
+    answer: "yes"
+    answer_type: yes_no
+    type: past_event
+    gt_intervals: [["00:16:10", "00:17:20"]]
+    modality: visual
+
+  - id: q013
+    question: "What kind of fish is caught through the ice after crab hunting?"
+    answer: "sheefish"
+    accepted_answers: ["inconnu", "sheefish"]
+    answer_type: short_text
+    type: speech
+    gt_intervals: [["00:17:00", "00:17:45"]]
+    modality: speech
+
+  - id: q014
+    question: "What transformation happens to the sheefish after being caught and left on the ice?"
+    answer: "it freezes solid"
+    accepted_answers: ["freezes solid", "becomes frozen", "stiffens from freezing"]
+    answer_type: short_text
+    type: object_change
+    gt_intervals: [["00:17:50", "00:18:40"]]
+    evidence_time: "00:18:40"
+    modality: visual
+
+  - id: q015
+    question: "What firearm is used during the ptarmigan hunt?"
+    answer: "a 22 caliber rifle"
+    accepted_answers: [".22 rifle", "22 rifle", "rimfire rifle"]
+    answer_type: short_text
+    type: attribute_recall
+    gt_intervals: [["00:22:30", "00:23:15"]]
+    modality: visual
+
+  - id: q016
+    question: "Did the hunter successfully shoot a ptarmigan on his first shot?"
+    answer: "yes"
+    answer_type: yes_no
+    type: past_event
+    gt_intervals: [["00:23:40", "00:24:20"]]
+    modality: visual
+
+  - id: q017
+    question: "What color plumage do the ptarmigans have in the Arctic winter?"
+    answer: "white"
+    accepted_answers: ["white with black tail feathers", "mostly white"]
+    answer_type: short_text
+    type: attribute_recall
+    gt_intervals: [["00:24:10", "00:25:00"]]
+    modality: visual
+
+  - id: q018
+    question: "How does the raw ptarmigan meat change during cooking over the stove?"
+    answer: "it changes from dark red raw meat to cooked brown meat"
+    accepted_answers: ["turns brown", "sears to brown", "cooks from dark red to brown"]
+    answer_type: short_text
+    type: object_change
+    gt_intervals: [["00:26:00", "00:27:15"]]
+    evidence_time: "00:27:15"
+    modality: visual
+
+  - id: q019
+    question: "Which cooking utensil used to make the crab meal in the tent is used again to cook the ptarmigan?"
+    answer: "cast iron skillet"
+    accepted_answers: ["skillet", "frying pan", "cast iron pan"]
+    answer_type: short_text
+    type: cross_segment
+    gt_intervals: [["00:14:10", "00:15:00"], ["00:26:10", "00:27:00"]]
+    modality: visual
+
+  - id: q020
+    question: "Why does the presenter state that night travels in tundra conditions require extreme caution?"
+    answer: "C"
+    options: ["Wildlife attacks are common", "Ice breaks frequently near rivers", "Flat light and whiteouts obscure terrain changes and drop-offs", "GPS units stop working below zero degrees"]
+    answer_type: multiple_choice
+    type: speech
+    gt_intervals: [["00:28:30", "00:29:20"]]
+    modality: speech
+
+  - id: q021
+    question: "What shelter is built or set up for the final night of the trip?"
+    answer: "a snow wall shelter around the hot tent"
+    accepted_answers: ["hot tent with snow wall", "heated tent", "snow wall around tent"]
+    answer_type: short_text
+    type: attribute_recall
+    gt_intervals: [["00:31:00", "00:32:30"]]
+    modality: visual
+
+  - id: q022
+    question: "How does the interior condition of the tent change once the wood stove is lit?"
+    answer: "it warms up enough to melt ice inside and allow removal of thick winter jackets"
+    accepted_answers: ["heats up", "becomes warm and comfortable", "snow melts inside"]
+    answer_type: short_text
+    type: object_change
+    gt_intervals: [["00:33:10", "00:34:20"]]
+    evidence_time: "00:34:20"
+    modality: visual
+
+  - id: q023
+    question: "What dish is cooked as the final meal on Day 4 of the expedition?"
+    answer: "sheefish and ptarmigan stir fry with rice"
+    accepted_answers: ["fish and ptarmigan meal", "sheefish curry", "ptarmigan and fish with rice"]
+    answer_type: short_text
+    type: past_event
+    gt_intervals: [["00:36:10", "00:38:00"]]
+    modality: visual
+
+  - id: q024
+    question: "Was the snowmobile headlight turned on during the evening snow journey?"
+    answer: "yes"
+    answer_type: yes_no
+    type: past_event
+    gt_intervals: [["00:28:10", "00:29:00"]]
+    modality: visual
+
+  - id: q025
+    question: "What same clothing item is worn during the initial pot setting and the final camp departure?"
+    answer: "D"
+    options: ["Blue down parka", "Yellow rubber suit", "Camouflage hunting jacket", "Red and black winter jacket"]
+    answer_type: multiple_choice
+    type: cross_segment
+    gt_intervals: [["00:04:50", "00:05:30"], ["00:39:10", "00:40:00"]]
+    modality: visual
+
+  - id: q026
+    question: "What does the vlogger family buy for fishing?"
+    answer: "B"
+    options: ["Bait and fishing gear", "Axes and fishing gear", "Axes and bait", "Fishing gear and bait"]
+    answer_type: multiple_choice
+    type: past_event
+    gt_intervals: [["00:01:30", "00:02:00"]]
+    modality: both
+
+  - id: q027
+    question: "What does the vlogger family do after buying fishing stuffs?"
+    answer: "C"
+    options: ["Have meal in KFC", "Go fishing", "Have meal in Airport Pizza", "Go swimming"]
+    answer_type: multiple_choice
+    type: past_event
+    gt_intervals: [["00:02:45", "00:03:00"]]
+    modality: both
+
+  - id: q028
+    question: "What happens to the vlogger family members after trying to shoot the birds?"
+    answer: "D"
+    options: ["They are attacked by the bird", "They get lost", "They break they gun accidently", "Their car gets stuck in the snow"]
+    answer_type: multiple_choice
+    type: past_event
+    gt_intervals: [["00:11:30", "00:12:30"]]
+    modality: visual
+
+  - id: q029
+    question: "What does the vlogger family find in the visitor center?"
+    answer: "B"
+    options: ["A horse", "A yak", "A buffalo", "A cow"]
+    answer_type: multiple_choice
+    type: attribute_recall
+    gt_intervals: [["00:15:00", "00:15:30"]]
+    modality: visual
+
+  - id: q030
+    question: "What brand of goggles does the vlogger family have?"
+    answer: "D"
+    options: ["SATA", "Honeywell", "Uvex", "Smith"]
+    answer_type: multiple_choice
+    type: attribute_recall
+    gt_intervals: [["00:14:30", "00:16:30"]]
+    modality: visual
+
+  - id: q031
+    question: "How many places does the vlogger family go to catch king crabs?"
+    answer: "B"
+    options: ["3", "5", "6", "4"]
+    answer_type: multiple_choice
+    type: cross_segment
+    gt_intervals: [["00:16:30", "00:21:00"]]
+    modality: visual
+
+  - id: q032
+    question: "Why are the vlogger family members so happy at 22:03?"
+    answer: "D"
+    options: ["They catch a king crab by themselves and it taste good", "They buy a king crab and it taste good", "They have starve for a long time", "The locals present him with a king crab and it taste good"]
+    answer_type: multiple_choice
+    type: speech
+    gt_intervals: [["00:21:15", "00:22:30"]]
+    modality: both
+
+  - id: q033
+    question: "What is the key difference between a local knife and other knives?"
+    answer: "C"
+    options: ["Local knife is made by special material", "Local knife is colorful", "Local knife has a shape of fan", "Local knife is just for decorations"]
+    answer_type: multiple_choice
+    type: attribute_recall
+    gt_intervals: [["00:22:40", "00:22:50"]]
+    modality: both
+
+  - id: q034
+    question: "What do the vlogger family members do from 23:45-26:15?"
+    answer: "C"
+    options: ["They hunt with a gun. They shoot several birds and a moose", "They hunt with a gun. They shoot several birds but avoid the moose", "They hunt with two guns. They shoot several birds but avoid the moose", "They hunt with two guns. They shoot several birds and a moose"]
+    answer_type: multiple_choice
+    type: past_event
+    gt_intervals: [["00:23:45", "00:26:15"]]
+    modality: visual
+
+  - id: q035
+    question: "What happens to the vlogger family members after their second hunting?"
+    answer: "D"
+    options: ["Their snowmobile is so crowded", "Their snowmobile is attacked by birds", "Their snowmobile run out of power", "Their snowmobile can't reverse"]
+    answer_type: multiple_choice
+    type: past_event
+    gt_intervals: [["00:26:20", "00:26:30"]]
+    modality: visual
+
+  - id: q036
+    question: "Why does the vlogger point the barrel of the gun toward his mouth?"
+    answer: "A"
+    options: ["He is trying to clear the barrel of the gun", "He is trying to get the most excitement", "He is trying to commit suicide", "No information"]
+    answer_type: multiple_choice
+    type: speech
+    gt_intervals: [["00:26:49", "00:27:10"]]
+    modality: both
+
+  - id: q037
+    question: "What are the vlogger family members doing at 34:33?"
+    answer: "C"
+    options: ["They are visiting museums", "They are learning knowledge of moose", "They are buying gifts", "They are having meal"]
+    answer_type: multiple_choice
+    type: past_event
+    gt_intervals: [["00:34:28", "00:35:30"]]
+    modality: visual
+
+  - id: q038
+    question: "What are the vlogger family members doing from 36:19-37:08?"
+    answer: "D"
+    options: ["They are looking for their tool for they have lost it", "They are looking for prey", "They are looking for their food for they have lost it", "They are looking for their gun for they have lost it"]
+    answer_type: multiple_choice
+    type: past_event
+    gt_intervals: [["00:36:19", "00:37:08"]]
+    modality: both
+
+  - id: q039
+    question: "How many times do the vlogger family members go hunting in total?"
+    answer: "A"
+    options: ["3", "6", "4", "5"]
+    answer_type: multiple_choice
+    type: cross_segment
+    gt_intervals: [["00:00:00", "00:40:48"]]
+    modality: visual
+
+  - id: q040
+    question: "What is the most common form of transportation there?"
+    answer: "D"
+    options: ["Jeep", "Car", "Sled", "Snowmobile"]
+    answer_type: multiple_choice
+    type: cross_segment
+    gt_intervals: [["00:00:00", "00:40:48"]]
+    modality: visual
+
+  - id: q041
+    question: "What foods do the vlogger family members eat the most here?"
+    answer: "B"
+    options: ["Pizza", "Waffles", "Birds", "King crab"]
+    answer_type: multiple_choice
+    type: cross_segment
+    gt_intervals: [["00:00:00", "00:40:48"]]
+    modality: visual
