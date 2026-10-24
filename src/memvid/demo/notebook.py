@@ -684,7 +684,7 @@ def _worker(stage, config):
         caption_frames(cfg, get_vlm(cfg))
     elif stage == "perceive":
         from memvid.models.registry import get_vlm
-        from memvid.perception.run import run_perception
+        from memvid.perception.run import needs_visual_recovery, run_perception
 
         if "SmolVLM" in cfg.models.vlm.model_id:
             from memvid.demo.local_perception import CaptionGroundedModel
@@ -692,11 +692,13 @@ def _worker(stage, config):
             model = CaptionGroundedModel(cfg, get_llm(cfg))
         else:
             model = get_vlm(cfg)
-        obs = run_perception(cfg, model)
-        bad = [o.chunk_id for o in obs if not o.ok or o.fallback == "transcript_after_vlm_failure"]
+        obs = run_perception(cfg, model, retry_failed=True, require_matching_resume=True)
+        bad = [o.chunk_id for o in obs if needs_visual_recovery(o)]
         if bad:
             raise RuntimeError(
                 f"Visual perception failed for chunks {bad}; inspect observations and processing.log. "
+                "All observations and the partial checkpoint have been saved. "
+                "Run demo.build() again to recover only failed chunks; successful chunks are retained. "
                 "No memory was built from transcript-only fallbacks."
             )
     elif stage == "memory":

@@ -147,3 +147,23 @@ boundary and both model profiles. Media and real-model checks are additional;
 unit tests deliberately do not download weights or stand in for model accuracy.
 Bootstrap tests cover managed Windows tools, validated Unix tools, safe archive
 extraction, JS runtime fallback, merged-audio checks, download caching and English UI text.
+
+## Recovering failed perception chunks
+
+If perception completes but the demo rejects some chunk IDs, all observations and
+the partial checkpoint are already saved. Update this branch with `git pull --ff-only`
+and call `demo.build()` again in the same kernel with unchanged settings. Successful
+cached chunks are retained; only failed or transcript-only fallback chunks are
+retried. Worker processes import the updated code without restarting the kernel.
+
+Selective retries use the same frames, image resolution and transcript, with a
+compact JSON prompt and an output limit of at least 2048 tokens. This recovery
+strategy and retried IDs are recorded in perception_info.json. Before retrying,
+small observation/manifest files are backed up under derived/demo/recovery_backups/.
+The actual derived root is the session's derived directory; media is not duplicated.
+An unmatched or missing checkpoint causes an explicit error rather than a full-video
+restart. Do not use --force or edit the model/frame configuration to recover an existing run.
+
+If a retry still fails, its failed status is retained and memory construction stays
+blocked. Subsequent retries retain newly successful chunks as well. This does not
+silently replace missing visual observations with transcript-only records.

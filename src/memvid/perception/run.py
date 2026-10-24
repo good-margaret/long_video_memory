@@ -14,6 +14,7 @@ import json
 import logging
 import math
 import random
+import shutil
 import time
 from collections import Counter
 from pathlib import Path
@@ -34,6 +35,32 @@ from memvid.schemas import Chunk, FrameRecord
 from memvid.timeutils import format_timestamp
 
 log = logging.getLogger(__name__)
+RECOVERY_STRATEGY = 'selective_compact_v1'
+
+
+def needs_visual_recovery(observation: ChunkObservation) -> bool:
+    return not observation.ok or observation.fallback == "transcript_after_vlm_failure"
+
+
+def build_recovery_prompt(chunk: Chunk, n_frames: int, max_chars: int) -> str:
+    """Compact schema without concrete example objects; used only for failed chunks."""
+    return (
+        f"Inspect these {n_frames} video frames in chronological order and the transcript. "
+        "Describe only this segment. Return one valid JSON object, no markdown or explanation.\n"
+        "Use exactly four keys: entities, events, relations, speech_summary.\n"
+        "entities: at most 4 objects, each with name (string), category (string), attributes (object).\n"
+        "events: at most 3 objects, each with description (string), entities (list of entity names), "
+        "salience (integer 1-3).\n"
+        "relations: a list of [subject, predicate, object] using declared entity names, or [].\n"
+        "speech_summary: a short string summarizing the transcript; preserve stated names, numbers and reasons. "
+        "Empty only if there is no speech.\n"
+        "Report visible people, objects and actions when present. Do not invent facts. "
+        "Keep every value brief and close every JSON bracket.\n"
+        f"Categories: {', '.join(CATEGORIES)}.\n"
+        f"### CHUNK\nid: {chunk.chunk_id}; time: {chunk.t_start} to {chunk.t_end}\n"
+        f"### TRANSCRIPT\n{chunk.transcript_text.strip()[:max_chars] or '(no speech)'}\n"
+        '### OUTPUT\nFill these JSON keys: {"entities":[],"events":[],"relations":[],"speech_summary":""}'
+    )
 
 
 def observations_path(cfg: ProjectConfig) -> Path:
@@ -109,44 +136,41 @@ def _peak_cuda_memory() -> dict[str, float] | None:
         return None
 
 
-def perceive_chunk(cfg: ProjectConfig, vlm: GenerativeModel, chunk: Chunk,
-                   frames: list[FrameRecord]) -> ChunkObservation:
+def perceive_chunk(
+    cfg: ProjectConfig, vlm: GenerativeModel, chunk: Chunk, frames: list[FrameRecord], *, recovery: bool = False
+) -> ChunkObservation:
     pc = cfg.perception
     chosen = _select(frames, pc.frames_per_chunk)
-    images = [resize_to_pixels(Image.open(cfg.derived_dir / f.path).convert("RGB"), pc.max_pixels)
-              for f in chosen]
-    prompt = build_prompt(chunk, len(images), pc.max_transcript_chars)
-    res = generate_validated(vlm, prompt, ModelObservation, images=images,
-                             max_new_tokens=cfg.models.vlm.max_new_tokens,
-                             repair_attempts=pc.repair_attempts)
-    transcript = chunk.transcript_text.strip()[:pc.max_transcript_chars]
-    rescue_used = False
+    images = [resize_to_pixels(Image.open(cfg.derived_dir / f.path).convert("RGB"), pc.max_pixels) for f in chosen]
+    prompt = (build_recovery_prompt if recovery else build_prompt)(chunk, len(images), pc.max_transcript_chars)
+    token_limit = max(2048, cfg.models.vlm.max_new_tokens) if recovery else cfg.models.vlm.max_new_tokens
+    res = generate_validated(
+        vlm, prompt, ModelObservation, images=images, max_new_tokens=token_limit, repair_attempts=pc.repair_attempts
+    )
+    transcript = chunk.transcript_text.strip()[: pc.max_transcript_chars]
+    rescue_used = recovery
     if not res.ok:
         rescue_used = True
         rescue_prompt = build_rescue_prompt(chunk, len(images), pc.max_transcript_chars)
-        log.warning("standard perception was empty for chunk %d; trying visual rescue",
-                    chunk.chunk_id)
+        log.warning("standard perception was empty for chunk %d; trying visual rescue", chunk.chunk_id)
         res = generate_validated(
             vlm,
             rescue_prompt,
             ModelObservation,
             images=images,
-            max_new_tokens=cfg.models.vlm.max_new_tokens,
+            max_new_tokens=token_limit,
             repair_attempts=1,
         )
     if res.ok:
-        obs = ChunkObservation.from_model(chunk.chunk_id, chunk.t_start, chunk.t_end, res.value,
-                                          res.attempts)
+        obs = ChunkObservation.from_model(chunk.chunk_id, chunk.t_start, chunk.t_end, res.value, res.attempts)
         obs.rescue_used = rescue_used
         if transcript and not obs.speech_summary:
             obs.speech_summary = transcript
             obs.fallback = "transcript_floor"
-            log.warning("VLM omitted speech for chunk %d; preserving the source transcript",
-                        chunk.chunk_id)
+            log.warning("VLM omitted speech for chunk %d; preserving the source transcript", chunk.chunk_id)
         return obs
     raw = res.raw[-1][-1000:] if res.raw else "(no model output)"
-    log.warning("perception failed for chunk %d: %s; last output: %r",
-                chunk.chunk_id, res.error, raw)
+    log.warning("perception failed for chunk %d: %s; last output: %r", chunk.chunk_id, res.error, raw)
     if transcript:
         log.warning("preserving the source transcript as fallback for chunk %d", chunk.chunk_id)
         return ChunkObservation(
@@ -158,12 +182,26 @@ def perceive_chunk(cfg: ProjectConfig, vlm: GenerativeModel, chunk: Chunk,
             fallback="transcript_after_vlm_failure",
             rescue_used=rescue_used,
         )
-    return ChunkObservation(chunk_id=chunk.chunk_id, t_start=chunk.t_start, t_end=chunk.t_end,
-                            ok=False, error=res.error, attempts=res.attempts)
+    return ChunkObservation(
+        chunk_id=chunk.chunk_id,
+        t_start=chunk.t_start,
+        t_end=chunk.t_end,
+        ok=False,
+        error=res.error,
+        attempts=res.attempts,
+    )
 
 
-def run_perception(cfg: ProjectConfig, vlm: GenerativeModel, *, force: bool = False,
-                   progress: bool = True, limit: int | None = None) -> list[ChunkObservation]:
+def run_perception(
+    cfg: ProjectConfig,
+    vlm: GenerativeModel,
+    *,
+    force: bool = False,
+    progress: bool = True,
+    limit: int | None = None,
+    retry_failed: bool = False,
+    require_matching_resume: bool = False,
+) -> list[ChunkObservation]:
     d = cfg.derived_dir
     m = load_manifest(d, cfg.video.video_id)
     if "perception" in m.frozen_stages and not force:
@@ -179,8 +217,11 @@ def run_perception(cfg: ProjectConfig, vlm: GenerativeModel, *, force: bool = Fa
     for f in frames:
         by_chunk.setdefault(f.chunk_id, []).append(f)
 
-    signature = {"prompt_version": PROMPT_VERSION, "model": vlm.describe(),
-                 "perception": cfg.perception.model_dump(mode="json")}
+    signature = {
+        "prompt_version": PROMPT_VERSION,
+        "model": vlm.describe(),
+        "perception": cfg.perception.model_dump(mode="json"),
+    }
     try:
         import torch
 
@@ -198,20 +239,53 @@ def run_perception(cfg: ProjectConfig, vlm: GenerativeModel, *, force: bool = Fa
                 o = ChunkObservation.model_validate(r)
                 done[o.chunk_id] = o
             log.info("resuming: %d chunks already perceived", len(done))
+        elif rows and require_matching_resume:
+            raise PipelineStateError(
+                "Saved perception signature differs from the current model/configuration. "
+                "Refusing to restart the full video. Restore the original configuration "
+                "or create a separate session; do not use --force to recover this run."
+            )
+    elif require_matching_resume and observations_path(cfg).exists() and not force:
+        raise PipelineStateError(
+            "Final observations exist but observations.partial.jsonl is missing. "
+            "Restore the partial checkpoint from your backup; refusing a full-video restart."
+        )
+    if require_matching_resume and observations_path(cfg).exists() and not done and not force:
+        raise PipelineStateError(
+            "Final observations exist but no usable partial checkpoint was loaded. "
+            "Restore the partial checkpoint from your backup; refusing a full-video restart."
+        )
     if not done:
         partial.write_text(json.dumps({"signature": signature}) + "\n", encoding="utf-8")
 
-    todo = [c for c in chunks if c.chunk_id not in done]
+    retry_ids = {cid for cid, old in done.items() if retry_failed and needs_visual_recovery(old)}
+    todo = [c for c in chunks if c.chunk_id not in done or c.chunk_id in retry_ids]
+    recovery_backup = None
+    if retry_ids:
+        recovery_backup = d / "recovery_backups" / str(time.time_ns())
+        recovery_backup.mkdir(parents=True)
+        for name in ("observations.jsonl", "observations.partial.jsonl", "perception_info.json", "manifest.json"):
+            if (d / name).is_file():
+                shutil.copy2(d / name, recovery_backup / name)
+        log.warning(
+            "selective recovery: %d cached chunks retained; retrying only %s with %s",
+            len(done) - len(retry_ids),
+            sorted(retry_ids),
+            RECOVERY_STRATEGY,
+        )
     if limit is not None:
         # In a resumed smoke run, limit is the total target rather than the
         # number of additional chunks to append to the partial file.
-        todo = todo[:max(0, limit - len(done))]
+        todo = todo[:limit] if retry_failed else todo[: max(0, limit - len(done))]
     t0 = time.perf_counter()
     with open(partial, "a", encoding="utf-8") as fh:
         for c in progress_iter(todo, desc="perception", enabled=progress):
             if c.chunk_id not in by_chunk:
                 raise PipelineStateError(f"no frames for chunk {c.chunk_id}")
-            obs = perceive_chunk(cfg, vlm, c, by_chunk[c.chunk_id])
+            if c.chunk_id in retry_ids:
+                obs = perceive_chunk(cfg, vlm, c, by_chunk[c.chunk_id], recovery=True)
+            else:
+                obs = perceive_chunk(cfg, vlm, c, by_chunk[c.chunk_id])
             done[obs.chunk_id] = obs
             fh.write(obs.model_dump_json() + "\n")
             fh.flush()
@@ -231,18 +305,28 @@ def run_perception(cfg: ProjectConfig, vlm: GenerativeModel, *, force: bool = Fa
         "peak_cuda_memory_mb": _peak_cuda_memory(),
         "workload": workload,
         "stats": stats,
+        "selective_recovery": {
+            "strategy": RECOVERY_STRATEGY if retry_ids else None,
+            "backup_dir": str(recovery_backup.relative_to(d)) if recovery_backup else None,
+            "retried_chunk_ids": [c.chunk_id for c in todo if c.chunk_id in retry_ids],
+            "retained_chunk_count": len(chunks) - len(todo),
+            "recovery_max_new_tokens": max(2048, cfg.models.vlm.max_new_tokens) if retry_ids else None,
+        },
     }
     write_json(d / "perception_info.json", info)
     m = load_manifest(d, cfg.video.video_id)
     h = cfg.section_hash("perception", "models")
     register_file(m, d, "observations", observations_path(cfg), step="perceive", config_hash=h)
     register_file(m, d, "perception_info", d / "perception_info.json", step="perceive", config_hash=h)
-    m.stats["perception"] = {**stats, "model": vlm.describe().get("name"),
-                             "prompt_version": PROMPT_VERSION,
-                             "max_pixels": cfg.perception.max_pixels,
-                             **workload,
-                             "wall_time_s": round(wall, 1),
-                             "peak_cuda_memory_mb": info["peak_cuda_memory_mb"]}
+    m.stats["perception"] = {
+        **stats,
+        "model": vlm.describe().get("name"),
+        "prompt_version": PROMPT_VERSION,
+        "max_pixels": cfg.perception.max_pixels,
+        **workload,
+        "wall_time_s": round(wall, 1),
+        "peak_cuda_memory_mb": info["peak_cuda_memory_mb"],
+    }
     save_manifest(d, m)
     return obs
 
