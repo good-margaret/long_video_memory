@@ -1,0 +1,46 @@
+video:
+  video_id: KbahC-QCKU8
+  filename: KbahC-QCKU8.mp4
+
+paths:
+  raw_dir: data/raw
+  derived_dir: data/experiments/F8_ASR
+  annotations_dir: data/annotations
+  # reuse C2_B2, C3_B2 and C4_full produced by the main F8_ASR experiment
+  runs_dir: runs/experiments/F8_ASR
+  report_generated_dir: report/generated
+
+models:
+  vlm:
+    backend: transformers
+    model_id: Qwen/Qwen3-VL-4B-Instruct
+    dtype: auto
+    device_map: auto
+    max_new_tokens: 1024
+  llm:
+    backend: transformers
+    model_id: Qwen/Qwen3-VL-4B-Instruct
+    dtype: auto
+    device_map: auto
+    max_new_tokens: 512
+  embedder: sentence-transformers
+  embedder_model: sentence-transformers/all-MiniLM-L6-v2
+  tokenizer: auto
+
+budgets:
+  mode: fraction
+  values: {B1: 0.02, B2: 0.05, B3: 0.15}
+
+retrieval:
+  budget_tokens: 1500
+  top_k: 40
+  entity_boost: 0.25
+  temporal_boost: 0.20
+
+experiment:
+  conditions: [C2, C3, C4]
+  ablations: []
+  ablation_budget: B2
+  split: test
+
+seed: 0
