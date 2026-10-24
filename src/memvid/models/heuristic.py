@@ -137,5 +137,17 @@ class HeuristicModel(GenerativeModel):
         cand = set(content_words(sec.get("CANDIDATE", "")))
         return {"correct": bool(ref) and ref <= cand}
 
+    @classmethod
+    def _task_visual_evidence(cls, sec: dict[str, str]) -> dict[str, Any]:
+        groups = sec.get("FRAME GROUPS", "")
+        return {"observations": [f"smoke-test visual evidence for {groups[:80]}"] if groups else [],
+                "sufficient": bool(groups)}
+
+    @staticmethod
+    def _task_evidence_critic(sec: dict[str, str]) -> dict[str, Any]:
+        answer = sec.get("DRAFT ANSWER", "").strip().lower()
+        sufficient = bool(answer and answer != "unknown")
+        return {"sufficient": sufficient, "missing": "" if sufficient else "answer evidence"}
+
     def describe(self) -> dict[str, Any]:
         return {"name": "heuristic", "backend": "heuristic", "warning": "not a real model"}

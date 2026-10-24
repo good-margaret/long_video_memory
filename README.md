@@ -276,7 +276,36 @@ paired McNemar comparisons and perception cost.
 
 ---
 
-## 8. Development
+## 8. Query-adaptive episodic rehydration
+
+`scripts/episodic_rehydration_experiment.py` evaluates whether compact C3 memory works
+better as an index into the frozen episode archive than as the only store of details.
+It compares archive-only, C3-provenance and weighted hybrid retrieval on the dev split,
+freezes the best method, and then evaluates text rehydration against targeted visual
+inspection plus one evidence-driven corrective retrieval step on test.
+
+The runner is resumable and writes one JSONL checkpoint per worker after every question.
+Two GPUs can run disjoint shards without sharing model state:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python scripts/episodic_rehydration_experiment.py \
+  --config configs/experiment_f8_asr.yaml --memory-run runs/experiments/F8_ASR/KbahC-QCKU8/C3_B2 \
+  --output runs/episodic_rehydration --phase dev --shard-index 0 --num-shards 2
+CUDA_VISIBLE_DEVICES=1 python scripts/episodic_rehydration_experiment.py \
+  --config configs/experiment_f8_asr.yaml --memory-run runs/experiments/F8_ASR/KbahC-QCKU8/C3_B2 \
+  --output runs/episodic_rehydration --phase dev --shard-index 1 --num-shards 2
+python scripts/episodic_rehydration_experiment.py --config configs/experiment_f8_asr.yaml \
+  --memory-run runs/experiments/F8_ASR/KbahC-QCKU8/C3_B2 \
+  --output runs/episodic_rehydration --phase select
+```
+
+Run the two test shards in the same way with `--phase test`, then use `--phase aggregate`.
+The exact question and split hashes are logged because perception and memory may be reused
+with a later, explicitly versioned question file.
+
+---
+
+## 9. Development
 
 ```bash
 ruff check src scripts

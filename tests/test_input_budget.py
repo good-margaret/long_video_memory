@@ -9,7 +9,9 @@ import numpy as np
 from pydantic import ValidationError
 
 from memvid.config import ASRConfig, load_config
-from memvid.evaluation.metrics import interval_distance, summarize_rows
+from memvid.evaluation.metrics import JudgeCache, _specific_evidence_record, interval_distance, summarize_rows
+from memvid.episodic import fuse_chunk_rankings
+from memvid.memory.records import Entity, Event
 from memvid.preprocess.asr import import_srt, load_pcm_wav
 from memvid.perception.run import build_rescue_prompt
 from memvid.perception.schema import ChunkObservation, ModelObservation
@@ -96,6 +98,27 @@ class MetricTest(unittest.TestCase):
         self.assertEqual(interval_distance([(0, 10)], [(5, 12)]), 0)
         self.assertEqual(interval_distance([(0, 10)], [(15, 20)]), 5)
         self.assertIsNone(interval_distance([], [(15, 20)]))
+
+    def test_broad_provenance_is_not_specific_evidence(self) -> None:
+        entity = Entity(id="E1", source_chunks=[1, 2], name="person", first_seen=0, last_seen=40)
+        summary = Event(id="V1", source_chunks=[1, 2], t_start=0, t_end=40,
+                        description="coarse summary", summarized=True)
+        event = Event(id="V2", source_chunks=[2], t_start=20, t_end=40,
+                      description="concrete event")
+        self.assertFalse(_specific_evidence_record(entity))
+        self.assertFalse(_specific_evidence_record(summary))
+        self.assertTrue(_specific_evidence_record(event))
+
+    def test_judge_cache_key_is_versioned_but_manual_key_is_stable(self) -> None:
+        self.assertTrue(JudgeCache.key("q1", "An axe").startswith("strict-v2::"))
+        self.assertEqual(JudgeCache.manual_key("q1", "An axe"), "q1::axe")
+
+    def test_hybrid_rank_fusion_rewards_agreement(self) -> None:
+        archive = [(4, 0.9), (2, 0.8), (8, 0.7)]
+        c3 = [(8, 0.2), (5, 0.1), (4, 0.05)]
+        ranked = fuse_chunk_rankings(archive, c3, "hybrid")
+        self.assertEqual(ranked[0][0], 4)
+        self.assertEqual({chunk_id for chunk_id, _ in ranked}, {2, 4, 5, 8})
 
     def test_summary_groups_accuracy_by_modality(self) -> None:
         rows = [

@@ -105,7 +105,8 @@ def main() -> None:
     cost_rows = []
     for name in inp.index:
         info = efficiency.get(name) or {}
-        cost_rows.append({"condition": name, "wall_time_h": info.get("wall_time_s", 0) / 3600,
+        wall_time = info.get("wall_time_s_this_run", info.get("wall_time_s", 0))
+        cost_rows.append({"condition": name, "wall_time_h": wall_time / 3600,
                           "accuracy": inp.loc[name, "accuracy"]})
     cost = pd.DataFrame(cost_rows)
     cost.to_csv(out / "perception_cost.csv", index=False)

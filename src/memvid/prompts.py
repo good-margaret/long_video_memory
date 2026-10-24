@@ -8,7 +8,7 @@ whenever a template changes, so stale caches are detected.
 
 from __future__ import annotations
 
-PROMPT_VERSION = "4"
+PROMPT_VERSION = "5"
 
 CATEGORIES = [
     "person", "tool", "container", "food", "material", "furniture", "device", "vehicle",
@@ -143,6 +143,7 @@ ANSWER_FORMATS = {
 
 ANSWER = """### TASK: answer
 Answer the question about a video using ONLY the memory records below. Times are hh:mm:ss from the start of the video. Cite the ids of the records that support the answer. If the records do not contain the answer, give your best guess and set "confidence" to "low".
+Only cite record ids that appear in square brackets in MEMORY. If no memory record supports the answer, return an empty citation list. Never copy ids from the output schema.
 {format_instruction}
 
 ### MEMORY
@@ -153,11 +154,14 @@ Answer the question about a video using ONLY the memory records below. Times are
 {options_block}
 ### OUTPUT
 Reply with ONE JSON object:
-{{"answer": "...", "cited_record_ids": ["V3", "S1"], "confidence": "low"}}
+{{"answer": "...", "cited_record_ids": [], "confidence": "low"}}
 """
 
-JUDGE = """### TASK: judge
-Decide whether the candidate answer is correct given the reference answer. Wording may differ; a different entity, number, color, time or state is incorrect.
+JUDGE = """### TASK: strict answer judge
+Decide whether the candidate fully answers the question and is semantically equivalent to at least one reference answer.
+Allow paraphrases, harmless extra detail, singular/plural variants, and equivalent spellings.
+Mark false if the candidate reverses roles or relations, contradicts the reference, omits a required part of a comparison or list, gives a different entity/number/color/time/state, or merely says the answer is unknown.
+Judge only correctness, not writing style. When uncertain, return false.
 
 ### QUESTION
 {question}
