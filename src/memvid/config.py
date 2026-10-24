@@ -203,6 +203,12 @@ class StructuredConfig(_Strict):
     use_entity_resolution: bool = True
     use_state_changes: bool = True
     use_compression: bool = True
+    compression_max_input_tokens: int = Field(
+        1200, ge=100,
+        description="At most this many record tokens go into one compression prompt (the oldest "
+                    "events of the window first); the rest of the window is compressed in later "
+                    "passes. Bounds the LLM prompt, which otherwise grows with the window and "
+                    "runs out of GPU memory on a 16 GB card.")
     max_compression_level: int = Field(
         3, ge=0,
         description="Summaries may be summarised again up to this level (level L merges "

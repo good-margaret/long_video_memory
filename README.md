@@ -33,6 +33,7 @@ worth of text, so 51 of 60 C3 answers were "not in the records". Changes:
 | Budgets 10 / 25 / 50 % of C4 (was 2 / 5 / 15 %) | `budgets.values` | bounded memories now exceed B_R = 1500, so retrieval selects instead of receiving everything |
 | Raw transcript reaches every memory | `memory_input.speech: both` | the VLM speech summary drops names, numbers and reasons; 33 of 60 questions are about speech |
 | Summaries can be re-compressed (levels up to 3, window doubles per level) | `memory.max_compression_level` | before, summaries were final and C3 fell back to pure eviction |
+| At most 1,200 record tokens per compression prompt | `memory.compression_max_input_tokens` | larger windows made prompts of ~5k tokens that ran out of memory on a 16 GB T4 |
 | Entities nothing refers to are evicted like background events | `StructuredMemory.priority` | entities took over half of C3's memory at 25 % |
 | Answer prompt no longer invites copying "low" into the answer | `prompts.ANSWER`, `answer.py` | 4 of 5 multiple-choice answers in C3/B2 were the word "low" |
 | C1 at one budget | `experiment.condition_budgets: {C1: [B1]}` | C1 rewrites its whole summary per chunk: 6 h at B2 |

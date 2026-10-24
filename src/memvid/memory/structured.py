@@ -326,7 +326,14 @@ class StructuredMemory(MemorySystem):
 
     def _compress_window(self, cands: list[Event], level: int, chunk_id: int) -> bool:
         t0 = cands[0].t_start
-        group = [r for r in cands if r.t_start < t0 + self.cfg.compression_window_s * 2 ** level]
+        window = [r for r in cands if r.t_start < t0 + self.cfg.compression_window_s * 2 ** level]
+        group, used = [], 0
+        for r in window:  # oldest first, until the prompt cap; always at least one record
+            n = self.store.tokens_of(r.id)
+            if group and used + n > self.cfg.compression_max_input_tokens:
+                break
+            group.append(r)
+            used += n
         if len(group) == 1:
             r = group[0]
             # nothing to merge with at this level: move it up a level, text unchanged (it is

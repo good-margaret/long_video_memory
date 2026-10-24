@@ -78,6 +78,25 @@ class HierarchicalCompressionTest(unittest.TestCase):
             self.assertGreaterEqual(len(r.source_chunks), 2)
 
 
+class CompressionPromptCapTest(unittest.TestCase):
+    def test_prompt_input_is_capped(self) -> None:
+        """Each compression call sees at most compression_max_input_tokens of records."""
+        seen = []
+
+        class Recorder(StructuredMemory):
+            def _summarize(self, group, t0, t1):
+                seen.append(sum(self.store.tokens_of(r.id) for r in group))
+                return super()._summarize(group, t0, t1)
+
+        store = MemoryStore(HashingEmbedder(), ApproxTokenCounter())
+        mem = Recorder(store, 900, StructuredConfig(compression_max_input_tokens=150), llm=None)
+        for i in range(60):
+            mem.process(_obs(i, transcript="word " * 60))
+        self.assertTrue(seen)
+        self.assertLessEqual(max(seen), 150 + max(store.tokens_of(r) for r in store.records))
+        self.assertLessEqual(max(s["tokens"] for s in mem.sizes), 900)
+
+
 class EntityPriorityTest(unittest.TestCase):
     def test_unreferenced_entity_ranks_below_referenced_event(self) -> None:
         mem = _run(1, 10_000)
