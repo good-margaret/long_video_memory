@@ -81,6 +81,10 @@ def main() -> None:
     parser.add_argument("--config", default="configs/experiment_memory_budget.yaml")
     parser.add_argument("--split", default="test", choices=("dev", "test", "all"))
     parser.add_argument("--output", default="runs/memory_budget_experiment")
+    parser.add_argument(
+        "--conditions", default="C2,C3,C4",
+        help="comma-separated subset; useful for assigning C2 and C3 to separate GPUs",
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-judge", action="store_true")
     args = parser.parse_args()
@@ -91,8 +95,14 @@ def main() -> None:
     if set(budgets) != expected:
         raise ValueError(f"expected budgets {sorted(expected)}, got {sorted(budgets)}")
 
-    specs = [(condition, budget) for budget in BUDGETS for condition in ("C2", "C3")]
-    specs.append(("C4", "full"))
+    selected = {item.strip() for item in args.conditions.split(",") if item.strip()}
+    unknown = selected - {"C2", "C3", "C4"}
+    if unknown:
+        raise ValueError(f"unknown conditions: {sorted(unknown)}")
+    specs = [(condition, budget) for budget in BUDGETS for condition in ("C2", "C3")
+             if condition in selected]
+    if "C4" in selected:
+        specs.append(("C4", "full"))
     judge = None if args.no_judge else get_llm(cfg)
     cache = JudgeCache(cfg)
     duration = video_duration(cfg)
@@ -120,7 +130,9 @@ def main() -> None:
         "budgets": budgets,
         "runs": summaries,
         "diagnostics": diagnostics,
-        "paired_c2_vs_c3": _paired(rows_by_run),
+        "paired_c2_vs_c3": _paired(rows_by_run)
+        if all(f"{condition}_{budget}" in rows_by_run
+               for budget in BUDGETS for condition in ("C2", "C3")) else [],
     }
     write_json(out / "summary.json", result)
 
