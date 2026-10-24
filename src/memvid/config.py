@@ -203,13 +203,31 @@ class StructuredConfig(_Strict):
     use_entity_resolution: bool = True
     use_state_changes: bool = True
     use_compression: bool = True
+    max_compression_level: int = Field(
+        3, ge=0,
+        description="Summaries may be summarised again up to this level (level L merges "
+                    "windows of compression_window_s * 2**L); 0 = single-level compression.")
 
 
 class BudgetsConfig(_Strict):
     mode: Literal["fraction", "tokens"] = Field(
         "fraction", description="fraction: of the unbounded log's final size (C4)."
     )
-    values: dict[str, float] = Field(default_factory=lambda: {"B1": 0.02, "B2": 0.05, "B3": 0.15})
+    values: dict[str, float] = Field(
+        default_factory=lambda: {"B1": 0.10, "B2": 0.25, "B3": 0.50},
+        description="fraction mode: share of the final size of C4. Must leave the bounded "
+                    "memories at least as large as the retrieval allowance B_R, otherwise every "
+                    "condition is starved and the comparison measures nothing.")
+
+
+class MemoryInputConfig(_Strict):
+    """What every memory organisation receives from a chunk, identically for all conditions."""
+
+    speech: Literal["summary", "transcript", "both"] = Field(
+        "both", description="summary: the VLM speech summary only; transcript: the raw ASR or "
+                            "subtitle text of the chunk; both: both (the summary loses names, "
+                            "numbers and reasons that speech questions ask about).")
+    max_transcript_chars: int = Field(600, ge=0, description="Raw transcript kept per chunk.")
 
 
 class RetrievalConfig(_Strict):
@@ -226,6 +244,10 @@ class ExperimentConfig(_Strict):
                                  "no_debounce"]
     )
     ablation_budget: str = "B2"
+    condition_budgets: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Restrict a condition to some budgets, e.g. {C1: [B1]}: the rolling summary "
+                    "regenerates its whole text every chunk, so its cost grows with the budget.")
     split: Literal["dev", "test", "all"] = "test"
 
 
@@ -249,6 +271,7 @@ class ProjectConfig(_Strict):
     questions: QuestionsConfig = QuestionsConfig()
     perception: PerceptionConfig = PerceptionConfig()
     memory: StructuredConfig = StructuredConfig()
+    memory_input: MemoryInputConfig = MemoryInputConfig()
     budgets: BudgetsConfig = BudgetsConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
     experiment: ExperimentConfig = ExperimentConfig()

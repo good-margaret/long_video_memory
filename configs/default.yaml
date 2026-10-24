@@ -91,9 +91,14 @@ memory:                         # structured memory C3
   use_state_changes: true
   use_compression: true
 
+memory_input:                   # what EVERY condition receives per chunk
+  speech: both                  # summary | transcript | both (the VLM summary drops names and numbers)
+  max_transcript_chars: 600
+
 budgets:
   mode: fraction                # fraction of the unbounded log C4, or absolute tokens
-  values: {B1: 0.02, B2: 0.05, B3: 0.15}
+  values: {B1: 0.10, B2: 0.25, B3: 0.50}   # was 2/5/15 %: B2 held ~6 chunks of a 122-chunk video
+                                          # and every bounded memory scored near zero
 
 retrieval:
   budget_tokens: 1500           # B_R, identical for every condition
@@ -105,6 +110,7 @@ experiment:
   conditions: [C1, C2, C3, C4]
   ablations: [no_resolution, no_state_changes, no_compression, no_debounce]
   ablation_budget: B2
+  condition_budgets: {C1: [B1]}   # C1 regenerates its whole summary per chunk: one budget only
   split: test
 
 analysis:

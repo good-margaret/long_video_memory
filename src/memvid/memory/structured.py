@@ -236,11 +236,13 @@ class StructuredMemory(MemorySystem):
     def _insert_events(self, obs: ChunkObservation, ctx: _ChunkContext) -> None:
         items = [(ev.description, [ctx.name_to_id[n] for n in ev.entities if n in ctx.name_to_id],
                   ev.salience, "visual") for ev in obs.events]
-        if obs.speech_summary:
-            low = obs.speech_summary.lower()
+        for speech in (obs.speech_summary, f'said: "{obs.transcript}"' if obs.transcript else ""):
+            if not speech:
+                continue
+            low = speech.lower()
             ids = [eid for name, eid in ctx.name_to_id.items()
                    if re.search(rf"\b{re.escape(name)}\b", low)]
-            items.append((obs.speech_summary, ids, 2, "speech"))
+            items.append((speech, ids, 2, "speech"))
         for desc, ids, sal, modality in items:
             ids = list(dict.fromkeys(ids))
             target = self._find_duplicate(desc, ids, modality, obs)
@@ -304,20 +306,34 @@ class StructuredMemory(MemorySystem):
                 self._delete_lowest(chunk_id)
 
     def _compress_oldest(self, chunk_id: int) -> bool:
+        """Compress the oldest window at the lowest level that has one; False if nothing
+        outside the protected recent chunks can be compressed any further.
+
+        Level 0 merges original events within compression_window_s. Summaries (and single
+        events kept verbatim) are level >= 1; level L merges windows of
+        compression_window_s * 2**L, up to max_compression_level. Without this, summaries
+        were final, and under a small budget C3 degenerated into pure eviction."""
         limit = chunk_id - self.cfg.protect_recent_chunks
-        cands = sorted((r for r in self.store.records.values()
-                        if isinstance(r, Event) and not r.compressed and max(r.source_chunks) <= limit),
-                       key=lambda r: (r.t_start, r.id))
-        if not cands:
-            return False
+        old = [r for r in self.store.records.values()
+               if isinstance(r, Event) and max(r.source_chunks) <= limit]
+        for level in range(self.cfg.max_compression_level + 1):
+            cands = sorted((r for r in old if (not r.compressed if level == 0
+                                               else r.compressed and r.level == level)),
+                           key=lambda r: (r.t_start, r.id))
+            if cands:
+                return self._compress_window(cands, level, chunk_id)
+        return False
+
+    def _compress_window(self, cands: list[Event], level: int, chunk_id: int) -> bool:
         t0 = cands[0].t_start
-        group = [r for r in cands if r.t_start < t0 + self.cfg.compression_window_s]
+        group = [r for r in cands if r.t_start < t0 + self.cfg.compression_window_s * 2 ** level]
         if len(group) == 1:
             r = group[0]
-            # nothing to merge: mark it as handled so the next window is considered;
-            # its text is unchanged, so it is not shown as a summary
-            self.store.upsert(r.model_copy(update={"compressed": True}), chunk_id=chunk_id,
-                              label="compress", reason="single event window (kept verbatim)")
+            # nothing to merge with at this level: move it up a level, text unchanged (it is
+            # shown as a summary only if it is one), so the next window or level is considered
+            self.store.upsert(r.model_copy(update={"compressed": True, "level": level + 1}),
+                              chunk_id=chunk_id, label="compress",
+                              reason=f"single event at level {level} (kept verbatim)")
             return True
         t1 = max(r.t_end for r in group)
         sources = sorted({c for r in group for c in r.source_chunks})
@@ -325,15 +341,15 @@ class StructuredMemory(MemorySystem):
         items = self._summarize(group, t0, t1)
         for r in group:
             self.store.delete(r.id, chunk_id=chunk_id, label="compress",
-                              reason=f"window {format_timestamp(t0, decimals=0)}")
+                              reason=f"level {level} window {format_timestamp(t0, decimals=0)}")
         for it in items:
             ids = [i for i in dict.fromkeys(it.entity_ids) if i in known]
             ev = Event(id=self.store.new_id("event"), source_chunks=sources, t_start=t0, t_end=t1,
                        description=it.description, entity_ids=ids, salience=it.salience,
-                       compressed=True, summarized=True)
+                       compressed=True, summarized=True, level=level + 1)
             self.store.upsert(ev, chunk_id=chunk_id, label="compress",
-                              reason=f"summary of {len(group)} events")
-        self._count("compressions")
+                              reason=f"summary of {len(group)} events (level {level + 1})")
+        self._count("compressions" if level == 0 else "recompressions")
         return True
 
     def _summarize(self, group: list[Event], t0: float, t1: float) -> list[_CompressedItem]:
@@ -363,7 +379,12 @@ class StructuredMemory(MemorySystem):
         if isinstance(r, StateChange):
             return base + w.get("salience", 1.0) * 2 + w.get("state_change", 2.0)
         if isinstance(r, Entity):
-            return base + w.get("entity", 3.0) + w.get("refs", 0.5) * refcount.get(r.id, 0)
+            # an entity is worth keeping because other records refer to it; one that nothing
+            # refers to any more only carries its attributes and ranks like a background event
+            refs = refcount.get(r.id, 0)
+            if refs == 0:
+                return base + w.get("salience", 1.0) * 1
+            return base + w.get("entity", 3.0) + w.get("refs", 0.5) * refs
         return base
 
     def _delete_lowest(self, chunk_id: int) -> None:

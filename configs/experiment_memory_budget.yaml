@@ -6,7 +6,8 @@ paths:
   raw_dir: data/raw
   derived_dir: data/experiments/F8_ASR
   annotations_dir: data/annotations
-  # reuse C2_B2, C3_B2 and C4_full produced by the main F8_ASR experiment
+  # same frozen F8_ASR observations; runs are rebuilt automatically when the memory
+  # code, budgets or memory_input change (their signatures differ)
   runs_dir: runs/experiments/F8_ASR
   report_generated_dir: report/generated
 
@@ -27,9 +28,13 @@ models:
   embedder_model: sentence-transformers/all-MiniLM-L6-v2
   tokenizer: auto
 
+memory_input:
+  speech: both
+  max_transcript_chars: 600
+
 budgets:
   mode: fraction
-  values: {B1: 0.02, B2: 0.05, B3: 0.15}
+  values: {B1: 0.10, B2: 0.25, B3: 0.50}
 
 retrieval:
   budget_tokens: 1500

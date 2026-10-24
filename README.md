@@ -22,6 +22,25 @@ The research questions (mapped to the project brief) and the method of every sta
 
 ---
 
+## Memory fix (v1.5.0, branch `experiment/memory-budget-fix`)
+
+The first full run (41-min video, 122 chunks) scored 0.50 with the unbounded log C4 and
+0.00-0.13 with every bounded memory: B2 = 5 % of C4 = 1,360 tokens held about six chunks'
+worth of text, so 51 of 60 C3 answers were "not in the records". Changes:
+
+| Change | Where | Why |
+|---|---|---|
+| Budgets 10 / 25 / 50 % of C4 (was 2 / 5 / 15 %) | `budgets.values` | bounded memories now exceed B_R = 1500, so retrieval selects instead of receiving everything |
+| Raw transcript reaches every memory | `memory_input.speech: both` | the VLM speech summary drops names, numbers and reasons; 33 of 60 questions are about speech |
+| Summaries can be re-compressed (levels up to 3, window doubles per level) | `memory.max_compression_level` | before, summaries were final and C3 fell back to pure eviction |
+| Entities nothing refers to are evicted like background events | `StructuredMemory.priority` | entities took over half of C3's memory at 25 % |
+| Answer prompt no longer invites copying "low" into the answer | `prompts.ANSWER`, `answer.py` | 4 of 5 multiple-choice answers in C3/B2 were the word "low" |
+| C1 at one budget | `experiment.condition_budgets: {C1: [B1]}` | C1 rewrites its whole summary per chunk: 6 h at B2 |
+
+Perception is unchanged and not rerun: the transcript is attached when memories are built.
+The perception audit (20 chunks) gives a false-entity rate of 0.049 and a missed-event rate
+of 0.06: `data/annotations/KbahC-QCKU8/perception_audit/`.
+
 ## 1. Installation
 
 ### 1.1 System requirements
@@ -135,8 +154,9 @@ are frozen. `memvid status` shows where you are.
    exactly the inputs it depends on, so a configuration change rebuilds only the affected
    runs and answers (tuning C3 never rebuilds C1, C2, C4 or the budgets); nothing stale
    is reused. Then leave the config alone.
-2. `memvid run-all` builds C4, resolves budgets B1–B3, and builds and answers C1–C3 at
-   every budget plus the four C3 ablations (14 runs) on the test split.
+2. `memvid run-all` builds C4, resolves budgets B1–B3, and builds and answers C2 and C3 at
+   every budget, C1 at the budgets in `experiment.condition_budgets` (default: B1 only), and
+   the four C3 ablations on the test split.
 3. `memvid analyze` scores all runs, builds the failure-attribution sheet, draws figures
    and writes `report/generated/results_*.tex`. The analysis is descriptive (95 %
    intervals, paired McNemar comparisons).

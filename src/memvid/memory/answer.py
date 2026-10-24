@@ -80,6 +80,8 @@ def answer_question(q: Question, ret: Retrieved, llm: GenerativeModel,
         cited = [i for i in dict.fromkeys(res.value.cited_record_ids) if i in by_id]
         invalid = [i for i in res.value.cited_record_ids if i not in by_id]
         ans, conf = res.value.answer, res.value.confidence
+        if ans.lower() in ("low", "medium", "high") and q.answer_type != "short_text":
+            ans = ""  # the confidence word copied into the answer field is not an answer
     else:
         cited, invalid, ans, conf = [], [], "", "low"
     return AnswerRecord(

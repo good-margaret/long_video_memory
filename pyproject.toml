@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "memvid"
-version = "1.4.0"
+version = "1.5.0"
 description = "Budgeted, structured memory for question answering over long videos: preprocessing, VLM perception, memory organisations, evaluation and demo."
 readme = "README.md"
 requires-python = ">=3.10"

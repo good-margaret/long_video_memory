@@ -142,7 +142,7 @@ ANSWER_FORMATS = {
 }
 
 ANSWER = """### TASK: answer
-Answer the question about a video using ONLY the memory records below. Times are hh:mm:ss from the start of the video. Cite the ids of the records that support the answer. If the records do not contain the answer, give your best guess and set "confidence" to "low".
+Answer the question about a video using ONLY the memory records below. Times are hh:mm:ss from the start of the video. Cite the ids of the records that support the answer. If the records do not contain the answer, still put your best guess in "answer" (never write "low", "medium" or "high" there) and rate your certainty in the separate field "confidence".
 {format_instruction}
 
 ### MEMORY
@@ -153,8 +153,11 @@ Answer the question about a video using ONLY the memory records below. Times are
 {options_block}
 ### OUTPUT
 Reply with ONE JSON object:
-{{"answer": "...", "cited_record_ids": ["V3", "S1"], "confidence": "low"}}
+{{"answer": "<your answer>", "cited_record_ids": ["V3", "S1"], "confidence": "<low, medium or high>"}}
 """
+# The answer prompt has its own version, so changing it re-answers questions without
+# touching the perception signature (which uses PROMPT_VERSION).
+ANSWER_PROMPT_VERSION = "2"
 
 JUDGE = """### TASK: judge
 Decide whether the candidate answer is correct given the reference answer. Wording may differ; a different entity, number, color, time or state is incorrect.

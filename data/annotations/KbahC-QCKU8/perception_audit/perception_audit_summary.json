@@ -1,0 +1,10 @@
+{
+  "n_chunks": 20,
+  "n_entities": 142,
+  "false_entities": 7,
+  "false_entity_rate": 0.049,
+  "missed_salient_events": 5,
+  "missed_event_rate": 0.06,
+  "max_false_entity_rate": 0.15,
+  "accepted": true
+}

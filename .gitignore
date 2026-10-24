@@ -21,6 +21,8 @@ runs/*
 !runs/.gitkeep
 # Human annotations (data/annotations/) ARE committed.
 
+presentation
+
 # LaTeX build products (build the report with latexmk)
 report/main.pdf
 report/*.aux

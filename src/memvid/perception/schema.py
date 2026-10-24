@@ -142,6 +142,9 @@ class ChunkObservation(BaseModel):
     dropped_refs: int = 0
     fallback: str | None = None
     rescue_used: bool = False
+    # Raw speech of the chunk. Not written by perception: attached when memories are built
+    # (memory_input.speech), so the frozen observations stay unchanged.
+    transcript: str = ""
 
     @model_validator(mode="after")
     def _normalise(self) -> ChunkObservation:
@@ -192,4 +195,6 @@ class ChunkObservation(BaseModel):
             parts.append("Relations: " + "; ".join(" ".join(r) for r in self.relations) + ".")
         if self.speech_summary:
             parts.append(f"Speech: {self.speech_summary}")
+        if self.transcript:
+            parts.append(f'Said: "{self.transcript}"')
         return " ".join(parts)

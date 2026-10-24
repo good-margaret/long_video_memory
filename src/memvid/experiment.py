@@ -17,7 +17,7 @@ from typing import Any
 
 from memvid import __version__
 from memvid.config import ProjectConfig
-from memvid.errors import MemvidError, PipelineStateError
+from memvid.errors import ConfigError, MemvidError, PipelineStateError
 from memvid.io import read_json, read_jsonl, sha256_file, sha256_json, write_json, write_jsonl
 from memvid.manifest import load_manifest
 from memvid.memory.answer import AnswerRecord, answer_question
@@ -28,9 +28,11 @@ from memvid.memory.structured import StructuredMemory
 from memvid.memory.systems import build_system, parse_condition
 from memvid.models.registry import describe_models, get_embedder, get_llm, get_token_counter, is_heuristic
 from memvid.perception.run import load_observations
+from memvid.perception.schema import ChunkObservation
 from memvid.pipeline import video_duration
-from memvid.prompts import PROMPT_VERSION
+from memvid.prompts import ANSWER_PROMPT_VERSION, PROMPT_VERSION
 from memvid.questions.manage import load_questions
+from memvid.schemas import Chunk
 
 log = logging.getLogger(__name__)
 FULL = "full"
@@ -61,6 +63,7 @@ def run_signature(cfg: ProjectConfig, condition: str, budget_tokens: int | None)
         "observations": _observations_sha(cfg),
         "tokenizer": [cfg.models.tokenizer, cfg.models.llm.backend, cfg.models.llm.model_id],
         "prompt_version": PROMPT_VERSION, "package": __version__,
+        "memory_input": cfg.memory_input.model_dump(mode="json"),
     }
     if base in ("C1", "C3"):
         inputs["llm"] = cfg.models.llm.model_dump(mode="json")
@@ -68,6 +71,35 @@ def run_signature(cfg: ProjectConfig, condition: str, budget_tokens: int | None)
         inputs["memory"] = cfg.memory.model_dump(mode="json")
         inputs["embedder"] = [cfg.models.embedder, cfg.models.embedder_model]
     return sha256_json(inputs)[:16]
+
+
+def _cut(text: str, max_chars: int) -> str:
+    text = " ".join(text.split())
+    if len(text) <= max_chars:
+        return text
+    cut = text[:max_chars].rsplit(" ", 1)[0]
+    return cut + " ..."
+
+
+def memory_inputs(cfg: ProjectConfig, obs: list[ChunkObservation]) -> list[ChunkObservation]:
+    """The observations as every memory organisation receives them: the speech channel is
+    set by memory_input.speech, identically for all conditions."""
+    mode = cfg.memory_input.speech
+    transcripts: dict[int, str] = {}
+    if mode != "summary":
+        path = cfg.derived_dir / "chunks.jsonl"
+        if not path.is_file():
+            raise PipelineStateError(f"{path} missing: memory_input.speech={mode!r} needs the "
+                                     "chunk transcripts (run `memvid chunk`)")
+        transcripts = {c.chunk_id: _cut(c.transcript_text, cfg.memory_input.max_transcript_chars)
+                       for c in read_jsonl(path, Chunk)}
+    out = []
+    for o in obs:
+        update = {"transcript": transcripts.get(o.chunk_id, "")}
+        if mode == "transcript":
+            update["speech_summary"] = ""
+        out.append(o.model_copy(update=update))
+    return out
 
 
 def _clear_downstream(out: Path) -> None:
@@ -93,7 +125,7 @@ def build_memory(cfg: ProjectConfig, condition: str, budget_name: str, *, strict
             return out
         log.warning("%s is stale (configuration, models, observations or budget changed); "
                     "rebuilding", out.name)
-    obs = load_observations(cfg, require_frozen=strict)
+    obs = memory_inputs(cfg, load_observations(cfg, require_frozen=strict))
     embedder, counter = get_embedder(cfg), get_token_counter(cfg)
     llm = get_llm(cfg) if base in ("C1", "C3") else None
     store = MemoryStore(embedder, counter)
@@ -155,7 +187,8 @@ def answer_signature(cfg: ProjectConfig, rdir: Path, split: str) -> str:
         "retrieval": cfg.retrieval.model_dump(mode="json"),
         "llm": cfg.models.llm.model_dump(mode="json"), "embedder": cfg.models.embedder,
         "embedder_model": cfg.models.embedder_model, "tokenizer": cfg.models.tokenizer,
-        "prompt_version": PROMPT_VERSION, "package": __version__,
+        "prompt_version": PROMPT_VERSION, "answer_prompt_version": ANSWER_PROMPT_VERSION,
+        "package": __version__,
     })[:16]
 
 
@@ -195,7 +228,11 @@ def planned_runs(cfg: ProjectConfig) -> list[tuple[str, str]]:
         if parse_condition(c)[0] == "C4":
             runs.append((c, FULL))
         else:
-            runs += [(c, b) for b in cfg.budgets.values]
+            allowed = cfg.experiment.condition_budgets.get(parse_condition(c)[0], list(cfg.budgets.values))
+            unknown = set(allowed) - set(cfg.budgets.values)
+            if unknown:
+                raise ConfigError(f"experiment.condition_budgets: unknown budgets {sorted(unknown)}")
+            runs += [(c, b) for b in cfg.budgets.values if b in allowed]
     runs += [(f"C3-{a}", cfg.experiment.ablation_budget) for a in cfg.experiment.ablations]
     return list(dict.fromkeys(runs))
 

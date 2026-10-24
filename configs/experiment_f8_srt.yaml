@@ -49,7 +49,7 @@ perception:
 
 budgets:
   mode: fraction
-  values: {B2: 0.05}
+  values: {B2: 0.25}
 
 experiment:
   conditions: [C3]

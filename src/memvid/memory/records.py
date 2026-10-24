@@ -82,8 +82,9 @@ class Event(_Record):
     entity_ids: list[str] = Field(default_factory=list)
     salience: int = Field(2, ge=1, le=3)
     modality: Literal["visual", "speech"] = "visual"
-    compressed: bool = False   # no longer eligible for compression
+    compressed: bool = False   # handled by first-level compression (kept or summarised)
     summarized: bool = False   # text written by the compression step (replaces originals)
+    level: int = Field(0, ge=0)  # 0 original; L >= 1 has passed L rounds of compression
 
     @property
     def t_ref(self) -> float:
