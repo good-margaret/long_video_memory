@@ -52,6 +52,12 @@ class VisualEvidence(BaseModel):
 class EvidenceCritique(BaseModel):
     sufficient: bool
     missing: str = ""
+    targeted_query: str = ""
+
+
+class AnswerChoice(BaseModel):
+    choice: Literal["initial", "revised"]
+    reason: str = ""
 
 
 VISUAL_EVIDENCE_PROMPT = """### TASK: visual_evidence
@@ -71,10 +77,24 @@ Reply with one JSON object:
 """
 
 
-CRITIC_PROMPT = """### TASK: evidence_critic
-Decide whether the evidence actually supports a complete answer to the question. Do not use
-outside knowledge and do not assume the draft is correct. Mark insufficient for missing parts,
-role reversals, unsupported entities, or an answer that only says the information is unknown.
+VISUAL_FALLBACK_PROMPT = """### TASK: visual_evidence_fallback
+Inspect the frames in chronological order for the question below. Return one short factual
+observation per line. Begin every line with '-'. Mention only visible evidence and do not answer
+the question. If nothing relevant is visible, return '- no relevant visual evidence visible'.
+
+### QUESTION
+{question}
+
+### FRAME GROUPS
+{groups}
+"""
+
+
+CRITIC_PROMPT = """### TASK: evidence_gate
+Decide whether the evidence contains every fact required to answer the question. Do not judge
+writing style and do not demand more evidence when the draft is already directly supported.
+For a change question require before and after states. For a cross-segment question require the
+two relevant episodes. If something is missing, write a short search query for that exact fact.
 
 ### QUESTION
 {question}
@@ -87,8 +107,58 @@ role reversals, unsupported entities, or an answer that only says the informatio
 
 ### OUTPUT
 Reply with one JSON object:
-{{"sufficient": false, "missing": "short description of evidence still needed"}}
+{{"sufficient": false, "missing": "short description", "targeted_query": "focused search query"}}
 """
+
+
+ANSWER_CHOICE_PROMPT = """### TASK: answer_choice
+Choose which candidate is better supported by the supplied video-memory evidence. Do not prefer
+the revised answer merely because it is newer. Select the initial answer when revision adds an
+unsupported detail or reverses a role, relation, state, order, number, or attribute.
+
+### QUESTION
+{question}
+
+### EVIDENCE
+{evidence}
+
+### INITIAL
+{initial}
+
+### REVISED
+{revised}
+
+### OUTPUT
+Reply with one JSON object: {{"choice": "initial", "reason": "short reason"}}
+"""
+
+
+TYPE_GUIDANCE = {
+    "speech": "Prefer exact transcript wording and speaker attribution.",
+    "attribute_recall": "Identify the target entity first, then extract only its requested attribute.",
+    "past_event": "Order the relevant events chronologically before answering.",
+    "object_change": "Find and compare explicit before and after states of the same object.",
+    "cross_segment": "Use evidence from each distinct episode named or implied by the question.",
+}
+
+
+def query_variants(question: Question) -> list[str]:
+    """Deterministic, type-aware queries; no test labels or reference answers are used."""
+    q = " ".join(question.question.split())
+    variants = [q]
+    if question.modality in ("speech", "both"):
+        variants.append(f"spoken statement dialogue transcript speaker: {q}")
+    if question.modality in ("visual", "both"):
+        variants.append(f"visible object action appearance location: {q}")
+    if question.type == "object_change":
+        variants.extend((f"before state {q}", f"after state change {q}"))
+    elif question.type == "cross_segment":
+        variants.extend((f"earlier episode {q}", f"later episode relation {q}"))
+    elif question.type == "past_event":
+        variants.append(f"event sequence immediately before after {q}")
+    elif question.type == "attribute_recall":
+        variants.append(f"entity attribute color size clothing location {q}")
+    return list(dict.fromkeys(variants))
 
 
 def episode_text(observation: ChunkObservation, chunk: Chunk) -> str:
@@ -213,9 +283,34 @@ class EpisodicRetriever:
                         expanded[neighbour] = max(expanded.get(neighbour, 0.0), score * 0.45 / delta)
         return sorted(expanded.items(), key=lambda item: (-item[1], item[0]))
 
-    def select(self, question: str, method: Method, *, skip: set[int] | None = None) -> EpisodeSelection:
+    def rank_question(self, question: Question, method: Method) -> list[tuple[int, float]]:
+        """Fuse several modality/type-specific searches without mixing raw score scales."""
+        fused: dict[int, float] = {}
+        for query in query_variants(question):
+            for rank, (chunk_id, _) in enumerate(self.rank(query, method), start=1):
+                fused[chunk_id] = fused.get(chunk_id, 0.0) + 1.0 / (60 + rank)
+        return sorted(fused.items(), key=lambda item: (-item[1], item[0]))
+
+    def _selection_from_ranking(
+        self,
+        ranking: list[tuple[int, float]],
+        method: Method,
+        *,
+        skip: set[int] | None = None,
+        diversify: bool = False,
+    ) -> EpisodeSelection:
         skip = skip or set()
-        ranking = self.rank(question, method)
+        if diversify:
+            # Put two separated high-ranking anchors first, then preserve the original
+            # ranking. This covers distinct moments without promoting weak distant hits.
+            anchors: list[tuple[int, float]] = []
+            for item in ranking:
+                if all(abs(item[0] - chosen[0]) > self.neighbour_radius for chosen in anchors):
+                    anchors.append(item)
+                if len(anchors) == 2:
+                    break
+            anchor_ids = {item[0] for item in anchors}
+            ranking = anchors + [item for item in ranking if item[0] not in anchor_ids]
         selected: list[Note] = []
         selected_ranked: list[int] = []
         used = 0
@@ -241,6 +336,15 @@ class EpisodicRetriever:
         selected.sort(key=lambda r: (r.t_start, r.id))
         return EpisodeSelection(method, selected, selected_ranked, scores, used)
 
+    def select(self, question: str, method: Method, *, skip: set[int] | None = None) -> EpisodeSelection:
+        return self._selection_from_ranking(self.rank(question, method), method, skip=skip)
+
+    def select_question(self, question: Question, method: Method) -> EpisodeSelection:
+        diversify = question.type in ("cross_segment", "object_change")
+        return self._selection_from_ranking(
+            self.rank_question(question, method), method, diversify=diversify,
+        )
+
     def expand(self, question: str, current: EpisodeSelection, n_chunks: int = 2) -> EpisodeSelection:
         extra = self.select(question, current.method, skip=set(current.ranked_chunk_ids))
         notes = list(current.notes)
@@ -264,6 +368,15 @@ class EpisodicRetriever:
         ]))
         return EpisodeSelection(current.method, notes, ids, current.scores, used)
 
+    def expand_targeted(
+        self,
+        query: str,
+        current: EpisodeSelection,
+        *,
+        n_chunks: int = 2,
+    ) -> EpisodeSelection:
+        return self.expand(query, current, n_chunks=n_chunks)
+
     def as_retrieved(self, selection: EpisodeSelection) -> Retrieved:
         ranked_ids = [f"A{chunk_id:04d}" for chunk_id in selection.ranked_chunk_ids]
         return Retrieved(
@@ -278,8 +391,20 @@ def answer_from_selection(
     selection: EpisodeSelection,
     retriever: EpisodicRetriever,
     llm: GenerativeModel,
+    *,
+    structured: bool = False,
 ) -> AnswerRecord:
-    return answer_question(question, retriever.as_retrieved(selection), llm, retriever.bounds)
+    if not structured:
+        return answer_question(question, retriever.as_retrieved(selection), llm, retriever.bounds)
+    guidance = TYPE_GUIDANCE.get(question.type, "Use the most specific evidence available.")
+    structured_question = (
+        f"{question.question}\n\nReasoning protocol: {guidance} "
+        "First compare the timestamped records internally; return only the required short answer."
+    )
+    return answer_question(
+        question, retriever.as_retrieved(selection), llm, retriever.bounds,
+        question_text=structured_question,
+    )
 
 
 def inspect_visual_evidence(
@@ -330,9 +455,26 @@ def inspect_visual_evidence(
         max_new_tokens=256,
         repair_attempts=1,
     )
-    if not result.ok:
-        return [], chosen
-    return result.value.observations, chosen
+    if result.ok and result.value.observations:
+        return result.value.observations, chosen
+    LOG.warning("visual JSON failed; using plain-text fallback: chunks=%s error=%s",
+                chosen, result.error or "empty observations")
+    raw = vlm.generate(
+        VISUAL_FALLBACK_PROMPT.format(question=question.question, groups="\n".join(groups)),
+        images=images,
+        max_new_tokens=192,
+    )
+    observations = [
+        line.strip().lstrip("-*• ").strip()
+        for line in raw.splitlines()
+        if line.strip().startswith(("-", "*", "•"))
+    ]
+    observations = [line for line in observations if line]
+    if not observations and raw.strip():
+        observations = [" ".join(raw.split())[:1000]]
+    LOG.info("visual fallback produced %d observations for chunks=%s",
+             len(observations), chosen)
+    return observations, chosen
 
 
 def attach_visual_evidence(
@@ -372,4 +514,33 @@ def critique_evidence(
         max_new_tokens=96,
         repair_attempts=1,
     )
-    return result.value if result.ok else EvidenceCritique(sufficient=True, missing="critic failed")
+    return result.value if result.ok else EvidenceCritique(
+        sufficient=True, missing="critic failed", targeted_query="",
+    )
+
+
+def choose_supported_answer(
+    question: Question,
+    selection: EpisodeSelection,
+    initial: AnswerRecord,
+    revised: AnswerRecord,
+    llm: GenerativeModel,
+) -> tuple[AnswerRecord, AnswerChoice]:
+    """Keep corrective retrieval from silently replacing a stronger initial answer."""
+    evidence = "\n".join(note.line() for note in selection.notes)
+    result = generate_validated(
+        llm,
+        ANSWER_CHOICE_PROMPT.format(
+            question=question.question,
+            evidence=evidence,
+            initial=initial.answer,
+            revised=revised.answer,
+        ),
+        AnswerChoice,
+        max_new_tokens=96,
+        repair_attempts=1,
+    )
+    choice = result.value if result.ok else AnswerChoice(
+        choice="initial", reason="answer selector failed",
+    )
+    return (revised if choice.choice == "revised" else initial), choice

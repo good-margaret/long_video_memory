@@ -10,11 +10,12 @@ from pydantic import ValidationError
 
 from memvid.config import ASRConfig, load_config
 from memvid.evaluation.metrics import JudgeCache, _specific_evidence_record, interval_distance, summarize_rows
-from memvid.episodic import fuse_chunk_rankings
+from memvid.episodic import EvidenceCritique, fuse_chunk_rankings, query_variants
 from memvid.memory.records import Entity, Event
 from memvid.preprocess.asr import import_srt, load_pcm_wav
 from memvid.perception.run import build_rescue_prompt
 from memvid.perception.schema import ChunkObservation, ModelObservation
+from memvid.questions.schema import Question
 from memvid.schemas import Chunk
 
 
@@ -119,6 +120,25 @@ class MetricTest(unittest.TestCase):
         ranked = fuse_chunk_rankings(archive, c3, "hybrid")
         self.assertEqual(ranked[0][0], 4)
         self.assertEqual({chunk_id for chunk_id, _ in ranked}, {2, 4, 5, 8})
+
+    def test_object_change_uses_before_and_after_queries(self) -> None:
+        question = Question(
+            id="q", question="How did the box change?", answer="opened",
+            type="object_change", gt_intervals=[(0, 20)], modality="visual",
+        )
+        queries = query_variants(question)
+        self.assertTrue(any("before state" in query for query in queries))
+        self.assertTrue(any("after state" in query for query in queries))
+        self.assertTrue(any("visible object" in query for query in queries))
+
+    def test_evidence_gate_has_targeted_query(self) -> None:
+        critique = EvidenceCritique(
+            sufficient=False,
+            missing="the earlier state",
+            targeted_query="box state before it was opened",
+        )
+        self.assertFalse(critique.sufficient)
+        self.assertIn("before", critique.targeted_query)
 
     def test_summary_groups_accuracy_by_modality(self) -> None:
         rows = [

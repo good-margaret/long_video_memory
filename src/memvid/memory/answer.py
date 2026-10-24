@@ -71,9 +71,10 @@ def build_answer_prompt(q: Question, memory_text: str, question_text: str | None
 
 
 def answer_question(q: Question, ret: Retrieved, llm: GenerativeModel,
-                    bounds: dict[int, tuple[float, float]]) -> AnswerRecord:
+                    bounds: dict[int, tuple[float, float]], *,
+                    question_text: str | None = None) -> AnswerRecord:
     memory_text = "\n".join(r.line() for r in ret.records)
-    res = generate_validated(llm, build_answer_prompt(q, memory_text), _ModelAnswer,
+    res = generate_validated(llm, build_answer_prompt(q, memory_text, question_text), _ModelAnswer,
                              max_new_tokens=128)
     by_id = {r.id: r for r in ret.records}
     if res.ok:
