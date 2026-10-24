@@ -40,6 +40,7 @@ memory = ["sentence-transformers>=3.0"]
 analysis = ["matplotlib>=3.8", "pandas>=2.0", "jiwer>=3.0"]
 # Interactive demo (Stage 5).
 demo = ["gradio>=4.40", "matplotlib>=3.8"]
+notebook = ["ipywidgets>=8.1", "ipykernel>=6.29", "nbformat>=5.10", "pandas>=2.0", "yt-dlp[default]>=2026.2.4"]
 # Linting.
 dev = ["ruff>=0.5"]
 # Everything for a full run on a GPU machine.

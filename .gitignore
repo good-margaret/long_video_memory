@@ -41,3 +41,9 @@ report/build/
 .DS_Store
 .vscode/
 .idea/
+
+# Portable interactive demo downloads and generated sessions
+.cache/
+demo_outputs/
+data/*/raw/
+.pytest_cache/

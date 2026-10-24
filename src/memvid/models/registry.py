@@ -25,7 +25,8 @@ _CACHE: dict[tuple, Any] = {}
 
 
 def _build(spec: ModelSpec) -> GenerativeModel:
-    key = ("gen", spec.backend, spec.model_id, spec.base_url)
+    key = ("gen", spec.backend, spec.model_id, spec.base_url, spec.dtype, spec.device_map,
+           spec.image_max_side, spec.image_splitting)
     if key in _CACHE:
         return _CACHE[key]
     if spec.backend == "heuristic":
@@ -48,17 +49,31 @@ def get_vlm(cfg: ProjectConfig) -> GenerativeModel:
     return _build(cfg.models.vlm)
 
 
+def release_models() -> None:
+    """Release cached stage models before loading the next stage in a small machine."""
+    import gc
+
+    _CACHE.clear()
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
+
+
 def get_llm(cfg: ProjectConfig) -> GenerativeModel:
     return _build(cfg.models.llm)
 
 
 def get_embedder(cfg: ProjectConfig) -> Embedder:
-    key = ("emb", cfg.models.embedder, cfg.models.embedder_model)
+    key = ("emb", cfg.models.embedder, cfg.models.embedder_model, cfg.models.embedder_device)
     if key not in _CACHE:
         if cfg.models.embedder == "hashing":
             _CACHE[key] = HashingEmbedder()
         else:
-            _CACHE[key] = SentenceTransformerEmbedder(cfg.models.embedder_model)
+            _CACHE[key] = SentenceTransformerEmbedder(cfg.models.embedder_model, cfg.models.embedder_device)
     return _CACHE[key]
 
 

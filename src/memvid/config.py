@@ -124,6 +124,8 @@ class ModelSpec(_Strict):
     api_key_env: str = Field("OPENAI_API_KEY", description="openai backend: env var with the key")
     dtype: str = "auto"
     device_map: str = "auto"
+    image_max_side: int | None = Field(None, ge=64, description="Optional processor resize cap (SmolVLM).")
+    image_splitting: bool | None = Field(None, description="Optional processor image splitting override.")
     max_new_tokens: int = Field(1024, ge=16)
     guided_json: bool = Field(
         True, description="openai backend: request JSON-schema constrained decoding."
@@ -136,6 +138,7 @@ class ModelsConfig(_Strict):
     llm: ModelSpec = ModelSpec(max_new_tokens=512)
     embedder: Literal["sentence-transformers", "hashing"] = "sentence-transformers"
     embedder_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedder_device: str | None = None
     tokenizer: Literal["auto", "hf", "approx"] = Field(
         "auto", description="Budget unit. auto: HF tokenizer of models.llm.model_id if "
         "transformers is installed, else the approximate counter (stated in results).",

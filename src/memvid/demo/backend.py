@@ -102,13 +102,19 @@ def timeline_figure(run_path: str, chunk: int, duration: float):
     return fig
 
 
-def ask(cfg: ProjectConfig, run_path: str, question: str) -> dict[str, Any]:
+def ask(cfg: ProjectConfig, run_path: str, question: str,
+        upto_chunk: int | None = None) -> dict[str, Any]:
     saved = _load(run_path)
+    if upto_chunk is not None and upto_chunk not in saved.bounds:
+        raise ValueError("Unknown snapshot chunk")
+    records = saved.records if upto_chunk is None else replay(saved.ops, upto_chunk=upto_chunk)
+    bounds = {c: iv for c, iv in saved.bounds.items() if upto_chunk is None or c <= upto_chunk}
     base, _ = parse_condition(saved.meta["condition"])
-    store = MemoryStore.from_records(saved.records, get_embedder(cfg), get_token_counter(cfg))
+    store = MemoryStore.from_records(records, get_embedder(cfg), get_token_counter(cfg))
     q = adhoc_question(question)
-    ret = retrieve(store, question, cfg.retrieval, video_duration(cfg), whole_memory=(base == "C1"))
-    ans = answer_question(q, ret, get_llm(cfg), saved.bounds)
+    duration = max((end for _, end in bounds.values()), default=0.0)
+    ret = retrieve(store, question, cfg.retrieval, duration, whole_memory=(base == "C1"))
+    ans = answer_question(q, ret, get_llm(cfg), bounds)
     return {"answer": ans, "retrieved": ret.records, "cited": set(ans.cited_ids)}
 
 

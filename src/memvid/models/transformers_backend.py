@@ -63,6 +63,15 @@ class TransformersModel(GenerativeModel):
             self.processor = tf.AutoTokenizer.from_pretrained(spec.model_id)
             self.tokenizer = self.processor
         self.model.eval()
+        image_processor = getattr(self.processor, "image_processor", None)
+        if spec.image_max_side is not None:
+            if image_processor is None or not hasattr(image_processor, "size"):
+                raise ValueError("This processor does not support image_max_side")
+            image_processor.size = {"longest_edge": spec.image_max_side}
+        if spec.image_splitting is not None:
+            if image_processor is None or not hasattr(image_processor, "do_image_splitting"):
+                raise ValueError("This processor does not support image_splitting")
+            image_processor.do_image_splitting = spec.image_splitting
         log.info("loaded %s in %.1fs (vlm=%s)", spec.model_id, time.perf_counter() - t0, self.is_vlm)
 
     def generate(self, prompt, *, images=None, json_schema=None, max_new_tokens=None) -> str:
@@ -75,9 +84,10 @@ class TransformersModel(GenerativeModel):
             messages = [{"role": "user", "content": content}]
         else:
             messages = [{"role": "user", "content": prompt}]
+        template_kwargs = {} if self.is_vlm else {"enable_thinking": False}
         inputs = self.processor.apply_chat_template(
             messages, tokenize=True, add_generation_prompt=True,
-            return_dict=True, return_tensors="pt",
+            return_dict=True, return_tensors="pt", **template_kwargs,
         ).to(self.model.device)
         n = max_new_tokens or self.spec.max_new_tokens
         with self._torch.inference_mode():
@@ -89,7 +99,8 @@ class TransformersModel(GenerativeModel):
     def describe(self) -> dict[str, Any]:
         tf_version = __import__("transformers").__version__
         return {"name": self.name, "backend": "transformers", "vlm": self.is_vlm,
-                "transformers": tf_version, "dtype": self.spec.dtype}
+                "transformers": tf_version, "dtype": self.spec.dtype,
+                "image_max_side": self.spec.image_max_side, "image_splitting": self.spec.image_splitting}
 
 
 def load_hf_tokenizer(model_id: str):

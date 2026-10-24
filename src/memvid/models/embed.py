@@ -65,7 +65,7 @@ class HashingEmbedder(Embedder):
 
 
 class SentenceTransformerEmbedder(Embedder):
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, device: str | None = None):
         try:
             from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]
         except ImportError as exc:
@@ -73,7 +73,7 @@ class SentenceTransformerEmbedder(Embedder):
                 "sentence-transformers is not installed: pip install -e '.[memory]', "
                 "or set models.embedder: hashing"
             ) from exc
-        self.model = SentenceTransformer(model_name)
+        self.model = SentenceTransformer(model_name, device=device)
         self.name = model_name
         self.dim = int(self.model.get_sentence_embedding_dimension())
         self._cache: dict[str, np.ndarray] = {}
