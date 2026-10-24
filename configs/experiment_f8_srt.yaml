@@ -49,7 +49,7 @@ perception:
 
 budgets:
   mode: fraction
-  values: {B2: 0.25}
+  values: {B1: 0.10, B2: 0.25, B3: 0.50}   # same set as experiment_memory_budget.yaml (shared budgets.json)
 
 experiment:
   conditions: [C3]

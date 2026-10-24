@@ -20,13 +20,22 @@ def main() -> None:
     parser.add_argument("--output", default="runs/memory_baselines")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-judge", action="store_true")
+    parser.add_argument(
+        "--conditions", default="C1,C2,C4",
+        help="comma-separated subset of C1,C2,C4. C1 rewrites its whole summary after every "
+             "chunk, so at large budgets it can take longer than a GPU session; run it separately",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.config)
     fixed_b2 = resolve_budgets(cfg)["B2"]
     cfg.budgets.mode = "tokens"
     cfg.budgets.values = {"B2": float(fixed_b2)}
-    specs = (("C1", "B2"), ("C2", "B2"), ("C4", "full"))
+    selected = [c.strip() for c in args.conditions.split(",") if c.strip()]
+    unknown = set(selected) - {"C1", "C2", "C4"}
+    if unknown:
+        raise ValueError(f"unknown conditions: {sorted(unknown)}")
+    specs = [(c, "full" if c == "C4" else "B2") for c in ("C1", "C2", "C4") if c in selected]
     judge = None if args.no_judge else get_llm(cfg)
     cache = JudgeCache(cfg)
     summaries = {}
