@@ -89,6 +89,12 @@ def run(args, cfg, split: str) -> None:
             )
             selection = add_visual_to_union(selection, visual, visual_chunks, counter)
         answer = answer_from_union(question, selection, llm, retriever.episodes.bounds)
+        union_chunk_ids = list(dict.fromkeys(
+            chunk_id
+            for record in selection.retrieved.records
+            for chunk_id in record.source_chunks
+            if chunk_id in retriever.episodes.bounds
+        ))
         row = {
             "phase": split,
             "condition": CONDITION,
@@ -97,7 +103,8 @@ def run(args, cfg, split: str) -> None:
             "modality": question.modality,
             "reference": question.answer,
             "answer": answer.model_dump(mode="json"),
-            "chunk_ids": selection.episode_selection.ranked_chunk_ids,
+            "chunk_ids": union_chunk_ids,
+            "episode_chunk_ids": selection.episode_selection.ranked_chunk_ids,
             "c4_ids": selection.c4_ids,
             "archive_ids": selection.archive_ids,
             "tokens": selection.retrieved.tokens,
