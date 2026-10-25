@@ -37,6 +37,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--max-chunks", type=int, default=8)
     p.add_argument("--visual-chunks", type=int, default=2)
     p.add_argument("--frames-per-chunk", type=int, default=3)
+    p.add_argument("--limit", type=int)
     p.add_argument("--force", action="store_true")
     return p
 
@@ -57,6 +58,8 @@ def run(args, cfg, split: str) -> None:
     done = completed(out)
     questions = experiment_questions(cfg, split)
     questions = [question for question in questions if (CONDITION, question.id) not in done]
+    if args.limit is not None:
+        questions = questions[: args.limit]
     LOG.info("%s START pending=%d condition=%s", split.upper(), len(questions), CONDITION)
     counter = get_token_counter(cfg)
     retriever = EvidenceUnionRetriever(
