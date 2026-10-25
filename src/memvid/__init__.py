@@ -7,4 +7,4 @@ Stage 4  memory organisations C1-C4, retrieval, answering
 Stage 5  experiments, evaluation, statistics, audits, demo
 """
 
-__version__ = "1.5.0"
+__version__ = "1.5.1"

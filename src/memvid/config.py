@@ -210,9 +210,17 @@ class StructuredConfig(_Strict):
                     "passes. Bounds the LLM prompt, which otherwise grows with the window and "
                     "runs out of GPU memory on a 16 GB card.")
     max_compression_level: int = Field(
-        3, ge=0,
+        2, ge=0,
         description="Summaries may be summarised again up to this level (level L merges "
-                    "windows of compression_window_s * 2**L); 0 = single-level compression.")
+                    "windows of compression_window_s * 2**L); 0 = single-level compression. "
+                    "2 bounds one summary to 1200 s; 3 produced a summary of 25 minutes.")
+    structure_max_share: float = Field(
+        0.40, gt=0, le=1,
+        description="Entities and relations may hold at most this share of the budget. Above "
+                    "it, the lowest-priority entity or relation is evicted before any event is "
+                    "compressed. Without the cap, compression always ran before eviction, so "
+                    "entities and relations (never compressed) took the extra budget and a "
+                    "larger budget did not keep more events.")
 
 
 class BudgetsConfig(_Strict):

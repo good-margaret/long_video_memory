@@ -28,6 +28,9 @@ models:
   embedder_model: sentence-transformers/all-MiniLM-L6-v2
   tokenizer: auto
 
+questions:
+  filename: questions_v2.yaml   # audited set; questions.yaml (v1) is kept for the earlier results
+
 memory_input:
   speech: both
   max_transcript_chars: 600
@@ -43,8 +46,8 @@ retrieval:
   temporal_boost: 0.20
 
 experiment:
-  conditions: [C2, C3, C4]
-  ablations: []
+  conditions: [C2, C3, C4]           # C1 is excluded: its update cost is O(n*B), ~15 h at B1
+  ablations: [no_resolution, no_state_changes, no_compression, no_debounce]
   ablation_budget: B2
   split: test
 

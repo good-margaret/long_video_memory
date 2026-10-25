@@ -1,0 +1,758 @@
+# Question set v2 (2026-10-25): questions.yaml with the corrections of the question audit.
+# questions.yaml itself is kept unchanged so that earlier results stay reproducible.
+# Removed (model-independent criteria):
+#   q013: evidence lost by ASR: Whisper merged 31:53-33:30 into three repeated lines, "salmon" never appears; the food is not visible in the frames
+#   q074: evidence lost by ASR (same gap as q013)
+#   q058: evidence lost by ASR (same gap as q013)
+#   q066: duplicate of q022 (same 3-second evidence, the egg-bearing crab put back)
+# Corrected (marked "v2:" in notes): q021, q023, q028, q031, q033, q037, q041, q048, q052, q056
+# Ids are unchanged, so split.json still applies (removed ids are simply unused).
+video_id: "KbahC-QCKU8"
+annotator: "Codex"
+questions:
+  - id: "q001"
+    question: "What combination of equipment did Luke and Nathan obtain during their first equipment-shopping stop?"
+    answer: "B"
+    answer_type: "multiple_choice"
+    type: "past_event"
+    gt_intervals: [["00:01:41", "00:02:01"]]
+    evidence_time: "00:02:01"
+    modality: "both"
+    options: ["Bait and food", "Axes and fishing gear", "Shovels and tow ropes", "A crab pot and a cooler"]
+    notes: "The axes are visible; the dialogue identifies the fishing gear. Adapted from user-supplied LVBench UID 2584; the duplicated original distractors have been replaced."
+
+  - id: "q002"
+    question: "Where did Luke say they would have lunch after looking at the umiaks on their first day?"
+    answer: "Airport Pizza"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:02:27", "00:02:51"]]
+    evidence_time: "00:02:51"
+    modality: "speech"
+    accepted_answers: ["Airport Pizza restaurant"]
+    notes: "Related user-supplied LVBench item 2585; adapted and checked against source evidence."
+
+  - id: "q003"
+    question: "Had they visited a museum before their first attempt to fish at the small-boat harbor?"
+    answer: "yes"
+    answer_type: "yes_no"
+    type: "past_event"
+    gt_intervals: [["00:03:06", "00:04:00"], ["00:04:19", "00:04:24"]]
+    evidence_time: "00:04:24"
+    modality: "speech"
+
+  - id: "q004"
+    question: "After learning that someone could drill fishing holes, what did Luke decide to stop doing in the mountains?"
+    answer: "Looking for ptarmigan"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:06:21", "00:06:38"]]
+    evidence_time: "00:06:38"
+    modality: "speech"
+    accepted_answers: ["hunting ptarmigan", "searching for birds"]
+
+  - id: "q005"
+    question: "When Nathan was fishing during the first successful harbor session, what vehicle did he sit on?"
+    answer: "A snowmobile"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:07:11", "00:07:31"]]
+    evidence_time: "00:07:31"
+    modality: "visual"
+    accepted_answers: ["the snow machine"]
+
+  - id: "q006"
+    question: "What happened to the truck after the maintained part of the snowy road ended?"
+    answer: "It became stuck in deep snow"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:11:47", "00:12:13"]]
+    evidence_time: "00:12:13"
+    modality: "visual"
+    accepted_answers: ["the truck got stuck", "it was high-centered in snow"]
+    notes: "Related user-supplied LVBench item 2590; adapted and checked against source evidence."
+
+  - id: "q007"
+    question: "Why did Luke and Nathan visit a preschool during their stay in Nome?"
+    answer: "Local children wanted to meet the Outdoor Boys"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:13:36", "00:14:10"]]
+    evidence_time: "00:14:10"
+    modality: "speech"
+    accepted_answers: ["the preschool children wanted to meet them"]
+
+  - id: "q008"
+    question: "Before heading onto the sea ice with Drew, which building did they visit where muskox wool was discussed?"
+    answer: "The Nome Visitor Center"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:15:10", "00:15:35"]]
+    evidence_time: "00:15:35"
+    modality: "speech"
+    accepted_answers: ["Nome Visitor Center", "the visitor center"]
+    notes: "Related user-supplied LVBench item 2592; adapted and checked against source evidence."
+
+  - id: "q009"
+    question: "Who provided the freshly cooked king crab that Luke and Nathan ate after the crab-pot trip?"
+    answer: "Drew"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:20:52", "00:20:58"], ["00:21:23", "00:21:31"]]
+    evidence_time: "00:21:31"
+    modality: "speech"
+    accepted_answers: ["their guide Drew"]
+
+  - id: "q010"
+    question: "What kind of knife did Luke buy after the crab meal, and where was its curved blade positioned relative to the handle?"
+    answer: "An ulu knife, with the curved blade below the handle"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:22:15", "00:22:19"], ["00:22:48", "00:23:02"]]
+    evidence_time: "00:23:02"
+    modality: "both"
+    accepted_answers: ["ulu; blade below the handle", "an ulu with a blade underneath its handle"]
+    notes: "Dialogue supplies the name ulu; the displayed knife supplies the blade/handle relationship."
+
+  - id: "q011"
+    question: "Why did Luke decide to move away from the mother moose and her calf?"
+    answer: "He thought she was angry and protecting her calf"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:24:30", "00:24:49"]]
+    evidence_time: "00:24:49"
+    modality: "speech"
+    accepted_answers: ["she thought they would hurt her baby", "the mother was protecting her baby"]
+
+  - id: "q012"
+    question: "What material did Nathan work on at the craftsman's bench, and what action did he visibly perform on it?"
+    answer: "Fossilized walrus ivory; he sanded it"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:30:33", "00:30:52"]]
+    evidence_time: "00:30:52"
+    modality: "both"
+    accepted_answers: ["he sanded fossilized ivory", "sanding walrus ivory"]
+    notes: "Dialogue identifies the material; frames establish Nathan performing the sanding rather than merely being invited to do it."
+
+  - id: "q014"
+    question: "During the gift-shopping stop after dog sledding, who was the stuffed caribou intended for?"
+    answer: "Jacob"
+    answer_type: "short_text"
+    type: "past_event"
+    gt_intervals: [["00:34:26", "00:34:32"]]
+    evidence_time: "00:34:32"
+    modality: "speech"
+    accepted_answers: ["his son Jacob"]
+
+  - id: "q015"
+    question: "On their last morning of hunting, what missing item made them retrace their route?"
+    answer: "D"
+    answer_type: "multiple_choice"
+    type: "past_event"
+    gt_intervals: [["00:36:25", "00:37:10"]]
+    evidence_time: "00:37:10"
+    modality: "speech"
+    options: ["A fishing rod", "An axe", "A camera", "A gun"]
+    notes: "Related user-supplied LVBench item 2605; adapted and checked against source evidence."
+
+  - id: "q016"
+    question: "What happened to the foam cover after Luke gave up trying to reopen the first old fishing hole?"
+    answer: "He put it back over the hole"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:05:00", "00:05:06"], ["00:05:19", "00:05:26"]]
+    evidence_time: "00:05:26"
+    modality: "visual"
+    accepted_answers: ["replaced it over the hole", "covered the hole with the foam again"]
+
+  - id: "q017"
+    question: "At the end of the first successful harbor fishing session, what did Luke put over the open fishing hole?"
+    answer: "Snow"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:09:08", "00:09:14"]]
+    evidence_time: "00:09:14"
+    modality: "visual"
+    accepted_answers: ["he covered it with snow"]
+
+  - id: "q018"
+    question: "How did the condition of the snow-covered fishing hole differ when they returned the next day from the old hole they had failed to reopen?"
+    answer: "Only a thin layer had frozen over the newer hole, so it could be reopened"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:05:19", "00:05:26"], ["00:14:25", "00:14:35"]]
+    evidence_time: "00:14:35"
+    modality: "speech"
+    accepted_answers: ["the newer hole had thin ice and reopened easily"]
+    notes: "Luke explicitly contrasts the old hole with the result of covering the newer one with snow."
+
+  - id: "q019"
+    question: "By the end of the roadside rescue, had the red truck remained stuck in the snow?"
+    answer: "no"
+    answer_type: "yes_no"
+    type: "object_change"
+    gt_intervals: [["00:11:58", "00:12:14"], ["00:12:32", "00:13:02"]]
+    evidence_time: "00:13:02"
+    modality: "visual"
+
+  - id: "q020"
+    question: "How did the role of the tomcod change between the harbor fishing and the crab-pot outing?"
+    answer: "They went from being the catch to being bait for king crab"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:07:50", "00:08:00"], ["00:17:25", "00:17:38"]]
+    evidence_time: "00:17:38"
+    modality: "speech"
+    accepted_answers: ["caught fish became crab bait", "tomcod were caught and then used as bait"]
+
+  - id: "q021"
+    question: "After the first crab pot was emptied, where was the empty pot sent, and how many feet of rope was it said to have?"
+    answer: "Back under the ice through the hole; 50 feet of rope"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:16:44", "00:16:48"], ["00:16:50", "00:17:25"], ["00:17:30", "00:17:47"]]
+    evidence_time: "00:17:47"
+    modality: "both"
+    accepted_answers: ["lowered into the water; 50 feet", "back under the ice; 50 ft"]
+    notes: "Dialogue gives the rope length; the pot sequence establishes its return below the ice. v2: reworded: \"it\" was ambiguous (pot or crab), and the 50 ft is asked by Luke, not stated by Drew."
+
+  - id: "q022"
+    question: "What did the group say should happen to the female crab carrying eggs?"
+    answer: "She should be put back in the water"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:18:03", "00:18:06"]]
+    evidence_time: "00:18:06"
+    modality: "speech"
+    accepted_answers: ["return her to the sea", "put her back quickly"]
+    notes: "The instruction to release her is explicit in the dialogue; no inference about an unseen individual is needed."
+
+  - id: "q023"
+    question: "In what form did the crab change from an animal handled on the ice to food eaten indoors?"
+    answer: "It was cooked and served as crab legs and body pieces"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:17:00", "00:17:24"], ["00:21:23", "00:22:05"]]
+    evidence_time: "00:22:05"
+    modality: "visual"
+    accepted_answers: ["cooked crab pieces", "cooked legs and body meat", "cooked and eaten", "cooked, then cracked into leg and body meat"]
+    notes: "Tracks crab as a catch/food category, not the identity of one individually identifiable crab. v2: accepted answers widened; the question admits any description of cooking it into leg/body meat."
+
+  - id: "q024"
+    question: "How did the ptarmigan change between being displayed after the successful long hunt and the bag Luke showed after cleaning them?"
+    answer: "Whole feathered birds became cleaned meat in a bag"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:28:15", "00:28:19"], ["00:28:43", "00:28:48"], ["00:28:58", "00:29:03"]]
+    evidence_time: "00:29:03"
+    modality: "visual"
+    accepted_answers: ["the birds were cleaned and bagged as meat"]
+
+  - id: "q025"
+    question: "What finish did the small ivory piece have after the workbench sanding?"
+    answer: "A shiny polished finish"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:30:37", "00:30:52"]]
+    evidence_time: "00:30:52"
+    modality: "visual"
+    accepted_answers: ["shiny", "polished", "smooth and shiny"]
+    notes: "The sanding is shown around 30:42 and the finished piece is held up around 30:50."
+
+  - id: "q026"
+    question: "What was added beneath the fossilized ivory piece as the workshop gift was assembled?"
+    answer: "Yellow sea glass"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:30:54", "00:31:04"]]
+    evidence_time: "00:31:04"
+    modality: "speech"
+    accepted_answers: ["pieces of yellow sea glass"]
+    notes: "The material and color are stated explicitly in the dialogue."
+
+  - id: "q027"
+    question: "After the snowmobile developed its reverse fault, what happened when reverse was selected?"
+    answer: "A"
+    answer_type: "multiple_choice"
+    type: "object_change"
+    gt_intervals: [["00:26:17", "00:26:31"]]
+    evidence_time: "00:26:31"
+    modality: "speech"
+    options: ["It still moved forward and beeped", "It moved backward without beeping", "Its engine would not start", "It ran out of fuel"]
+    notes: "Related user-supplied LVBench item 2600; adapted and checked against source evidence."
+
+  - id: "q028"
+    question: "During the final hunting outing, how did the location of the missing gun change from where they expected it to be to where they recovered it?"
+    answer: "It had fallen off the snowmobile and was found partly buried in snow"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:36:25", "00:36:33"], ["00:36:34", "00:37:00"]]
+    evidence_time: "00:37:00"
+    modality: "both"
+    accepted_answers: ["from the snowmobile to partly buried in the snow", "it fell off the snowmobile and was found lying in the snow"]
+    notes: "Speech reports the loss; images establish the recovery location and partial burial. v2: frames show the gun lying on the snow surface; accepting that."
+
+  - id: "q029"
+    question: "What changed about Nathan's gun barrel after Luke stopped to clear it during the hunt?"
+    answer: "The snow blockage was cleared before they continued"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:26:50", "00:27:09"]]
+    evidence_time: "00:27:09"
+    modality: "speech"
+    accepted_answers: ["the snow was removed from the barrel", "it went from blocked with snow to cleared"]
+    notes: "Luke identifies snow in the barrel and then says he thinks they are good to continue."
+
+  - id: "q030"
+    question: "How did the travel containers change from the shopping scene to the airport scene?"
+    answer: "The open black plastic totes were closed with yellow lids"
+    answer_type: "short_text"
+    type: "object_change"
+    gt_intervals: [["00:35:23", "00:35:28"], ["00:39:33", "00:39:38"], ["00:40:13", "00:40:18"]]
+    evidence_time: "00:40:18"
+    modality: "visual"
+    accepted_answers: ["open black bins became closed yellow-lidded bins", "they were fitted with yellow lids"]
+    notes: "These are plastic storage totes, not cardboard boxes. The airport shot shows their closed state."
+
+  - id: "q031"
+    question: "What material displayed as walrus tusks in the early museum visit reappeared as a craft material at the later workshop?"
+    answer: "Walrus ivory"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:03:26", "00:03:29"], ["00:29:50", "00:30:07"], ["00:30:33", "00:30:39"]]
+    evidence_time: "00:30:39"
+    modality: "speech"
+    accepted_answers: ["walrus tusk ivory", "ivory", "fossilized walrus ivory", "fossilized walrus tusks", "walrus tusk"]
+    notes: "v2: fossilized walrus tusks accepted: the same material."
+
+  - id: "q032"
+    question: "Which kind of animal linked the museum story about bringing medicine to Nome with an outdoor activity later in the trip?"
+    answer: "Sled dogs"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:03:28", "00:03:47"], ["00:31:42", "00:31:46"], ["00:32:00", "00:32:10"]]
+    evidence_time: "00:32:10"
+    modality: "speech"
+    accepted_answers: ["dogs", "sled dogs used for mushing"]
+
+  - id: "q033"
+    question: "What type of tool carried out of the early equipment shop was later used in attempts to reopen harbor fishing holes?"
+    answer: "An axe"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:01:55", "00:02:01"], ["00:05:00", "00:05:26"], ["00:14:25", "00:14:35"]]
+    evidence_time: "00:14:35"
+    modality: "visual"
+    accepted_answers: ["a hatchet", "axe", "ax"]
+    notes: "v2: spelling \"ax\" accepted."
+
+  - id: "q034"
+    question: "What sea did Luke identify both beside the first snowmobile exploration and during the later crab-pot trip?"
+    answer: "The Bering Sea"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:06:04", "00:06:13"], ["00:16:25", "00:16:35"], ["00:20:17", "00:20:26"]]
+    evidence_time: "00:20:26"
+    modality: "speech"
+    accepted_answers: ["Bering Sea"]
+
+  - id: "q035"
+    question: "How did their means of travel differ between getting stuck beyond the maintained road and later passing that same place on a successful hunt?"
+    answer: "C"
+    answer_type: "multiple_choice"
+    type: "cross_segment"
+    gt_intervals: [["00:11:47", "00:12:18"], ["00:24:14", "00:24:20"]]
+    evidence_time: "00:24:20"
+    modality: "speech"
+    options: ["Truck first, dog sled later", "Snowmobile first, truck later", "Truck first, snowmobile later", "Truck on both occasions"]
+
+  - id: "q036"
+    question: "How did Nathan's head covering differ between standing outside during the first museum visit and helping at the first crab pot?"
+    answer: "His head was bare at the museum, but his blue fur-trimmed hood was up at the crab pot"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:03:13", "00:03:17"], ["00:16:59", "00:17:04"]]
+    evidence_time: "00:17:04"
+    modality: "visual"
+    accepted_answers: ["bareheaded at the museum; wearing his blue fur-trimmed hood on the sea ice", "no head covering at the museum; hood up during crabbing"]
+    notes: "Compare the visible bare blond head near the museum with the raised blue hood at the first crab pot."
+
+  - id: "q037"
+    question: "Which breakfast restaurant first recommended by locals did Luke explicitly choose to return to on the final morning?"
+    answer: "Pingo's"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:10:11", "00:10:15"], ["00:35:47", "00:35:52"]]
+    evidence_time: "00:35:52"
+    modality: "speech"
+    accepted_answers: ["Pingos", "Pingo", "Pingu's", "Pingus"]
+    notes: "v2: the transcript spells the second mention \"Pingu's\"; the system only sees the transcript."
+
+  - id: "q038"
+    question: "Which pair of harvested foods mentioned in the opening plans did Luke say they served at the family feast at the end?"
+    answer: "King crab and ptarmigan"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:00:06", "00:00:18"], ["00:40:23", "00:40:32"]]
+    evidence_time: "00:40:32"
+    modality: "speech"
+    accepted_answers: ["ptarmigan and king crab", "crab and ptarmigan"]
+
+  - id: "q039"
+    question: "How did the two transport problems differ: the roadside truck problem and the fault during the long snowmobile hunt?"
+    answer: "The truck was stuck in deep snow; the snowmobile would not reverse"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:11:47", "00:12:22"], ["00:26:17", "00:26:31"]]
+    evidence_time: "00:26:31"
+    modality: "speech"
+    accepted_answers: ["truck stuck in snow, snowmobile reverse jammed"]
+
+  - id: "q040"
+    question: "What type of bird hunted during the final outing was then offered to a local person during the crab pickup?"
+    answer: "Ptarmigan"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:37:30", "00:38:00"], ["00:38:59", "00:39:12"]]
+    evidence_time: "00:39:12"
+    modality: "speech"
+    accepted_answers: ["ptarmigans"]
+
+  - id: "q041"
+    question: "What gift was described as perfect for Becca at the workshop, and what different gift was later bought for Tommy?"
+    answer: "Ivory pop sockets with yellow sea glass for Becca, and a red fox fur hat for Tommy"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:30:54", "00:31:04"], ["00:34:41", "00:34:51"]]
+    evidence_time: "00:34:51"
+    modality: "speech"
+    accepted_answers: ["ivory and sea glass for Becca; a fox fur hat for Tommy", "ivory pop sockets for Becca; a red fox fur hat for Tommy", "an ivory-and-yellow-sea-glass piece for Becca, and a red fox fur hat for Tommy"]
+    notes: "v2: the workshop gift is the ivory pop sockets (\"these are ivory pop sockets\"); accepted."
+
+  - id: "q042"
+    question: "Which earlier announced use for the ground muskox meat was different from how the tomcod catch was later used?"
+    answer: "Muskox meat was for burgers, while tomcod were used as crab bait"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:17:25", "00:17:38"], ["00:23:02", "00:23:07"]]
+    evidence_time: "00:23:07"
+    modality: "speech"
+    accepted_answers: ["burgers from muskox; crab bait from tomcod"]
+
+  - id: "q043"
+    question: "What visible item of Nathan's outer clothing stays the same color from harbor fishing to the crab-pot outing?"
+    answer: "His blue winter coat"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:07:24", "00:07:32"], ["00:16:58", "00:17:10"]]
+    evidence_time: "00:17:10"
+    modality: "visual"
+    accepted_answers: ["blue jacket", "his blue coat"]
+
+  - id: "q044"
+    question: "What source of wood did Luke name for the boats near the start, and what hands-on task did Nathan later perform on the ivory in the workshop?"
+    answer: "Shore driftwood supplied the boats; Nathan sanded the ivory"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:02:35", "00:02:47"], ["00:30:33", "00:30:52"]]
+    evidence_time: "00:30:52"
+    modality: "both"
+    accepted_answers: ["driftwood from the shore; sanding ivory", "driftwood; Nathan sanded walrus ivory"]
+    notes: "The early dialogue gives the wood source; the later workshop frames establish Nathan actually sanding the ivory."
+
+  - id: "q045"
+    question: "What did they buy as \"Alaskan luggage\" before collecting crabs to take home by plane?"
+    answer: "Black plastic storage totes with yellow lids"
+    answer_type: "short_text"
+    type: "cross_segment"
+    gt_intervals: [["00:35:20", "00:35:29"], ["00:38:46", "00:38:58"], ["00:40:13", "00:40:18"]]
+    evidence_time: "00:40:18"
+    modality: "both"
+    accepted_answers: ["plastic storage bins", "black and yellow plastic totes", "plastic totes"]
+    notes: "Dialogue calls them Alaskan luggage for bringing crabs home; shopping and airport frames identify black plastic totes with yellow lids."
+
+  - id: "q046"
+    question: "Which town does Luke welcome viewers to in the opening, and what color is the pickup immediately beside him?"
+    answer: "Nome, Alaska; a red pickup"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:00:00", "00:00:05"], ["00:00:18", "00:00:21"]]
+    evidence_time: "00:00:21"
+    modality: "both"
+    accepted_answers: ["Nome; red", "Nome, with a dark red truck", "Nome; burgundy"]
+    notes: "The town is identified in speech; the pickup color is visible in the opening shot."
+
+  - id: "q047"
+    question: "During the first successful harbor fishing session, what did Luke call the small fish, and what was the main color of Nathan's jacket?"
+    answer: "Tomcod; blue"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:07:20", "00:07:32"], ["00:07:50", "00:08:00"]]
+    evidence_time: "00:08:00"
+    modality: "both"
+    accepted_answers: ["tomcod and a blue jacket", "tomcod; bright blue"]
+    notes: "Speech supplies the fish name; frames supply the jacket color."
+
+  - id: "q048"
+    question: "What tool did Luke carry out of the first equipment shop, and what activity had he said they were buying tackle for?"
+    answer: "An axe; ice fishing"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:01:41", "00:01:46"], ["00:01:55", "00:02:01"]]
+    evidence_time: "00:02:01"
+    modality: "both"
+    accepted_answers: ["axe; ice fishing", "a hatchet; ice fishing", "ax; ice fishing"]
+    notes: "The number of axes is visual; the intended ice-fishing activity is stated before the shop visit. v2: the axe count was removed: only one axe head is visible in the sampled frames (01:58-02:01)."
+
+  - id: "q049"
+    question: "What color was the exposed foam cover over the old fishing hole?"
+    answer: "Pale gray"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:04:59", "00:05:06"], ["00:05:19", "00:05:26"]]
+    evidence_time: "00:05:26"
+    modality: "visual"
+    accepted_answers: ["light gray", "grey", "grayish white", "white"]
+    notes: "The foam looks pale gray/white with snow and ice on its surface; allow these equivalent descriptions."
+
+  - id: "q050"
+    question: "During the first snowmobile exploration, what sea did Luke identify ahead of him, and what color were his mirrored goggle lenses?"
+    answer: "The Bering Sea; blue-green mirrored lenses"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:06:04", "00:06:13"]]
+    evidence_time: "00:06:13"
+    modality: "both"
+    accepted_answers: ["Bering Sea; blue-green", "Bering Sea; blue", "Bering Sea; turquoise", "Bering Sea; cyan"]
+    notes: "The sea name is spoken; the lens color is visual."
+
+  - id: "q051"
+    question: "What brand name was printed on Luke's goggle strap during the crab-pot outing?"
+    answer: "SMITH"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:18:25", "00:18:33"], ["00:20:25", "00:20:32"]]
+    evidence_time: "00:20:32"
+    modality: "visual"
+    accepted_answers: ["Smith", "smith"]
+    notes: "Related user-supplied LVBench item 2593; adapted and checked against source evidence."
+
+  - id: "q052"
+    question: "What animal was the mounted specimen at the visitor center, and what color was its long hair?"
+    answer: "A muskox with dark brown hair"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:15:15", "00:15:25"]]
+    evidence_time: "00:15:25"
+    modality: "both"
+    accepted_answers: ["muskox; dark brown", "musk ox; brown", "muskox; dark shaggy brown fur"]
+    notes: "Speech names the animal; the mounted specimen establishes the hair color. v2: the cue word \"Umingmak\" is not in the transcript (\"there's the name uh\"), so it was removed from the question."
+
+  - id: "q053"
+    question: "What was the shape of the ulu blade Luke displayed outside after buying it?"
+    answer: "D"
+    answer_type: "multiple_choice"
+    type: "attribute_recall"
+    gt_intervals: [["00:22:56", "00:23:02"]]
+    evidence_time: "00:23:02"
+    modality: "visual"
+    options: ["Long and straight", "A narrow pointed spearhead", "A circular disc with no handle", "Broad, curved, and fan-shaped"]
+    notes: "Related user-supplied LVBench item 2598; adapted and checked against source evidence."
+
+  - id: "q054"
+    question: "What kind of markers stood by the graves in front of the old cabin?"
+    answer: "Crosses"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:24:53", "00:25:01"]]
+    evidence_time: "00:25:01"
+    modality: "visual"
+    accepted_answers: ["cross-shaped grave markers", "crosses marking the graves"]
+
+  - id: "q055"
+    question: "What color were the hunted ptarmigan's feathers in the snowy hunting scenes?"
+    answer: "White"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:24:11", "00:24:15"], ["00:25:23", "00:25:35"]]
+    evidence_time: "00:25:35"
+    modality: "visual"
+    accepted_answers: ["mostly white"]
+
+  - id: "q056"
+    question: "What species did Luke call the bird he was holding up as Alaska's state bird, and what color was the glove holding it?"
+    answer: "Willow ptarmigan; a black glove"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:28:07", "00:28:19"]]
+    evidence_time: "00:28:19"
+    modality: "both"
+    accepted_answers: ["willow ptarmigan; black glove", "willow ptarmigan; a black fleece glove"]
+    notes: "Speech supplies the exact bird name; the hand holding it visibly wears the white-and-black glove. v2: corrected: the glove holding the bird is black (frames 28:08-28:19), not white with a black palm."
+
+  - id: "q057"
+    question: "After the long hunt, how many birds did Luke say they had, and what kind of bag did he show containing the cleaned meat?"
+    answer: "Nine birds; a white translucent plastic bag"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:28:45", "00:28:48"], ["00:28:58", "00:29:03"]]
+    evidence_time: "00:29:03"
+    modality: "both"
+    accepted_answers: ["9; a white plastic bag", "nine; a plastic bag", "nine birds in a white plastic bag"]
+    notes: "The count is spoken; the cleaned-meat bag is shown afterward."
+
+  - id: "q059"
+    question: "What color was the small puppy shown climbing against Nathan near the end of the kennel visit?"
+    answer: "White"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:33:36", "00:33:44"]]
+    evidence_time: "00:33:44"
+    modality: "visual"
+    accepted_answers: ["a white puppy"]
+    notes: "A white puppy is visibly against Nathan in the puppy scene; color is also mentioned in speech."
+
+  - id: "q060"
+    question: "What color was the inner lining of the fur hat Luke displayed outside after buying it for Tommy?"
+    answer: "Cream"
+    answer_type: "short_text"
+    type: "attribute_recall"
+    gt_intervals: [["00:34:45", "00:34:51"]]
+    evidence_time: "00:34:51"
+    modality: "visual"
+    accepted_answers: ["cream-colored", "pale beige", "beige", "off-white"]
+    notes: "The inside of the hat faces the camera around 34:48."
+
+  - id: "q061"
+    question: "What was the name of the inn where Luke said they were staying?"
+    answer: "Dredge 7 Inn"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:01:05", "00:01:12"]]
+    evidence_time: "00:01:12"
+    modality: "speech"
+    accepted_answers: ["Dredge Seven Inn", "Dredge 7"]
+
+  - id: "q062"
+    question: "According to Luke, where did people traditionally obtain much of the wood used to build umiaks?"
+    answer: "Driftwood found on the shore"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:02:35", "00:02:47"]]
+    evidence_time: "00:02:47"
+    modality: "speech"
+    accepted_answers: ["driftwood", "wood washed ashore"]
+
+  - id: "q063"
+    question: "What did Luke explain that the small beads on the tomcod rig were for?"
+    answer: "Attracting tomcod before they are snagged"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:07:23", "00:07:30"]]
+    evidence_time: "00:07:30"
+    modality: "speech"
+    accepted_answers: ["to attract tomcod", "attracting fish"]
+
+  - id: "q064"
+    question: "At the end of the first fishing day, what time did Luke say the sun would set?"
+    answer: "9:40 PM"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:09:14", "00:09:22"]]
+    evidence_time: "00:09:22"
+    modality: "speech"
+    accepted_answers: ["21:40", "9:40 p.m."]
+
+  - id: "q065"
+    question: "What two pieces of recovery equipment did Luke say he did not have when the truck got stuck?"
+    answer: "Shovels and tow ropes"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:12:19", "00:12:23"]]
+    evidence_time: "00:12:23"
+    modality: "speech"
+    accepted_answers: ["a shovel and a tow rope", "shovels and towing ropes"]
+
+  - id: "q067"
+    question: "According to Luke during the crab outing, approximately how much did one crab cost locally in Nome?"
+    answer: "25"
+    answer_type: "number"
+    type: "speech"
+    gt_intervals: [["00:18:24", "00:18:29"]]
+    evidence_time: "00:18:29"
+    modality: "speech"
+    notes: "US dollars per crab, as reported in the video; not a current price claim."
+
+  - id: "q068"
+    question: "What did Luke say he planned to make with the ground muskox meat he was given?"
+    answer: "Burgers"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:23:02", "00:23:07"]]
+    evidence_time: "00:23:07"
+    modality: "speech"
+    accepted_answers: ["muskox burgers", "hamburgers"]
+
+  - id: "q069"
+    question: "How did Luke explain the different jobs of the scoped .22 and the shotgun when hunting ptarmigan?"
+    answer: "Use the .22 for birds on the ground and the shotgun when they fly"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:25:39", "00:25:49"]]
+    evidence_time: "00:25:49"
+    modality: "speech"
+    accepted_answers: ["rifle for grounded birds, shotgun for flying birds"]
+
+  - id: "q070"
+    question: "Why did Luke say Nathan's gun barrel had to be cleared before shooting again?"
+    answer: "Snow or ice blocking the barrel could make it explode"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:26:50", "00:27:02"]]
+    evidence_time: "00:27:02"
+    modality: "speech"
+    accepted_answers: ["a blocked barrel could explode", "snow in the barrel could cause an explosion"]
+    notes: "Related user-supplied LVBench item 2601; adapted and checked against source evidence."
+
+  - id: "q071"
+    question: "What fault did Luke identify when his shotgun failed to fire on two occasions?"
+    answer: "B"
+    answer_type: "multiple_choice"
+    type: "speech"
+    gt_intervals: [["00:27:52", "00:28:00"]]
+    evidence_time: "00:28:00"
+    modality: "speech"
+    options: ["A clogged fuel line", "A worn firing pin", "A broken stock", "A missing magazine"]
+
+  - id: "q072"
+    question: "What did Luke identify as the willow ptarmigans' winter food when showing the contents of the birds?"
+    answer: "The tips of willow branches"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:28:49", "00:28:58"]]
+    evidence_time: "00:28:58"
+    modality: "speech"
+    accepted_answers: ["willow tips", "tips of willow trees", "willow buds and tips"]
+
+  - id: "q073"
+    question: "According to the craftsman, what had to happen to ivory before it could be sold, rather than sold raw?"
+    answer: "It had to be worked by a Native Alaskan"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:30:09", "00:30:17"]]
+    evidence_time: "00:30:17"
+    modality: "speech"
+    accepted_answers: ["a Native Alaskan had to work it"]
+    notes: "Tests what the craftsman says, not the accuracy or completeness of a legal rule."
+
+  - id: "q075"
+    question: "What joking label did Luke say would let a crab travel as a carry-on?"
+    answer: "A service crab"
+    answer_type: "short_text"
+    type: "speech"
+    gt_intervals: [["00:38:46", "00:38:58"]]
+    evidence_time: "00:38:58"
+    modality: "speech"
+    accepted_answers: ["service crab"]
+    notes: "Explicitly a joke in the video, not factual airline guidance."

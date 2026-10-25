@@ -22,7 +22,7 @@ runs/*
 # Human annotations (data/annotations/) ARE committed.
 
 presentation
-
+data/experiments/*
 # LaTeX build products (build the report with latexmk)
 report/main.pdf
 report/*.aux

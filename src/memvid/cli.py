@@ -240,6 +240,7 @@ def demo(cfg, args):
 def status(cfg, args):
     from memvid.experiment import list_runs
     from memvid.manifest import load_manifest
+    from memvid.questions.manage import _frozen_info
 
     m = load_manifest(cfg.derived_dir, cfg.video.video_id)
 
@@ -248,7 +249,7 @@ def status(cfg, args):
 
     return {
         "stage 1 preprocessing": state("preprocess" in m.frozen_stages, "frames_index" in m.artifacts),
-        "stage 2 questions": state(bool(m.stats.get("questions", {}).get("frozen")),
+        "stage 2 questions": state(bool((_frozen_info(m, cfg.questions.filename) or {}).get("frozen")),
                                    cfg.questions_path.is_file()),
         "stage 3 perception": state("perception" in m.frozen_stages, "observations" in m.artifacts),
         "perception audit accepted": bool(m.stats.get("perception_audit", {}).get("accepted")),

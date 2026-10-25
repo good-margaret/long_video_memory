@@ -21,6 +21,9 @@ asr:
   temperature_fallback: false
   suspicious_no_speech_prob: 0.6
 
+questions:
+  filename: questions_v2.yaml   # audited set; questions.yaml (v1) is kept for the earlier results
+
 chunking:
   chunk_seconds: 20.0
 

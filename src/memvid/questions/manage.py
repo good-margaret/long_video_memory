@@ -3,8 +3,11 @@
 Files (data/annotations/<video_id>/):
   questions.yaml   human-written questions (never rewritten by code)
   split.json       {question_id: "dev" | "test"} written by `memvid questions-split`
-Freezing stores the SHA-256 of questions.yaml and split.json in the derived manifest;
-afterwards loading fails if either file changed.
+Freezing stores the SHA-256 of the question file and split.json in the derived manifest;
+afterwards loading fails if either file changed. Each question file (questions.filename,
+e.g. questions.yaml and the audited questions_v2.yaml) is frozen separately, so a corrected
+set can be added without touching the frozen original. A later set may drop questions:
+split.json must cover every question, extra ids in it are unused.
 """
 
 from __future__ import annotations
@@ -130,41 +133,67 @@ def load_questions(cfg: ProjectConfig, split: str = "all", *, require_frozen: bo
 
 
 # ----------------------------------------------------------------------------- freezing
+LEGACY_FILENAME = "questions.yaml"  # frozen before per-file freezing, under stats["questions"]
+
+
+def _frozen_info(m, filename: str) -> dict[str, Any] | None:
+    info = m.stats.get("question_sets", {}).get(filename)
+    if info is None and filename == LEGACY_FILENAME:
+        info = m.stats.get("questions")
+    return info
+
+
 def _refuse_if_frozen(cfg: ProjectConfig) -> None:
     m = load_manifest(cfg.derived_dir, cfg.video.video_id)
+    frozen = [k for k, v in m.stats.get("question_sets", {}).items() if v.get("frozen")]
     if m.stats.get("questions", {}).get("frozen"):
-        raise MemvidError("the question set is frozen; changing the split would invalidate results")
+        frozen.append(LEGACY_FILENAME)
+    if frozen:
+        raise MemvidError(f"question sets {sorted(set(frozen))} are frozen; changing the split "
+                          "would invalidate their results")
 
 
 def freeze_questions(cfg: ProjectConfig) -> dict[str, Any]:
     qf = load_question_file(cfg.questions_path)
     split = load_split(cfg)
-    if set(split) != {q.id for q in qf.questions}:
-        raise MemvidError("split.json does not match the question ids; re-run questions-split")
+    ids = {q.id for q in qf.questions}
+    if ids - set(split):
+        raise MemvidError(f"questions without a split: {sorted(ids - set(split))}; re-run questions-split")
     m = load_manifest(cfg.derived_dir, cfg.video.video_id)
+    filename = cfg.questions.filename
+    previous = _frozen_info(m, filename)
     info = {
         "frozen": True,
+        "filename": filename,
         "sha256_questions": sha256_file(cfg.questions_path),
         "sha256_split": sha256_file(split_path(cfg)),
         "n_questions": len(qf.questions),
-        "n_dev": sum(1 for v in split.values() if v == "dev"),
-        "n_test": sum(1 for v in split.values() if v == "test"),
+        "n_dev": sum(1 for q in qf.questions if split[q.id] == "dev"),
+        "n_test": sum(1 for q in qf.questions if split[q.id] == "test"),
         "by_type": dict(sorted(Counter(q.type for q in qf.questions).items())),
     }
+    if previous and previous.get("frozen") and (
+            previous["sha256_questions"] != info["sha256_questions"]
+            or previous["sha256_split"] != info["sha256_split"]):
+        raise MemvidError(f"{filename} is already frozen with different content; give a changed "
+                          "set a new filename (questions.filename) instead of editing it")
     cfg.derived_dir.mkdir(parents=True, exist_ok=True)
-    m.stats["questions"] = info
+    m.stats.setdefault("question_sets", {})[filename] = info
+    if filename == LEGACY_FILENAME:
+        m.stats["questions"] = info
     save_manifest(cfg.derived_dir, m)
     return info
 
 
 def _check_frozen_hashes(cfg: ProjectConfig, *, require: bool) -> None:
     m = load_manifest(cfg.derived_dir, cfg.video.video_id)
-    info = m.stats.get("questions")
+    info = _frozen_info(m, cfg.questions.filename)
     if not info or not info.get("frozen"):
         if require:
-            raise PipelineStateError("the question set is not frozen: run `memvid questions-freeze`")
+            raise PipelineStateError(f"the question set {cfg.questions.filename} is not frozen: "
+                                     "run `memvid questions-freeze`")
         return
     if sha256_file(cfg.questions_path) != info["sha256_questions"]:
-        raise MemvidError("questions.yaml changed after it was frozen")
+        raise MemvidError(f"{cfg.questions.filename} changed after it was frozen")
     if sha256_file(split_path(cfg)) != info["sha256_split"]:
         raise MemvidError("split.json changed after it was frozen")

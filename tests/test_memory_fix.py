@@ -74,8 +74,11 @@ class HierarchicalCompressionTest(unittest.TestCase):
         summarized = [r for r in mem.store.records.values()
                       if isinstance(r, Event) and r.summarized]
         self.assertTrue(summarized)
-        for r in summarized:
-            self.assertGreaterEqual(len(r.source_chunks), 2)
+        for r in summarized:  # provenance is the union of the merged events' chunks
+            self.assertTrue(all(r.t_start <= 20.0 * c + 1e-6 and 20.0 * c < r.t_end
+                                for c in r.source_chunks))
+        # two events of one chunk may be merged, but most summaries span several chunks
+        self.assertTrue(any(len(r.source_chunks) >= 2 for r in summarized))
 
 
 class CompressionPromptCapTest(unittest.TestCase):

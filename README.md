@@ -42,6 +42,27 @@ Perception is unchanged and not rerun: the transcript is attached when memories 
 The perception audit (20 chunks) gives a false-entity rate of 0.049 and a missed-event rate
 of 0.06: `data/annotations/KbahC-QCKU8/perception_audit/`.
 
+### v1.5.1: C3 budget allocation and the audited question set
+
+With v1.5.0, C3 scored 0.183 / 0.367 / 0.250 at B1 / B2 / B3, so doubling the budget from B2
+to B3 *lost* accuracy. The final B3 memory held 186 relations and 145 entities, but no more event
+tokens than B2, plus one summary covering 00:00-25:20. The cause: compression always ran before
+eviction, and entities and relations are never compressed, so they took the extra budget while
+events were re-compressed ever more coarsely. On the real observations (stand-in models), events
+held about 1.3k of 21.5k tokens at 50 %.
+
+| Change | Where | Why |
+|---|---|---|
+| Entities + relations at most 40 % of the budget; above it, the lowest-priority one is evicted before any compression | `memory.structure_max_share`, `StructuredMemory._enforce_budget` | event space now grows with the budget (replay: 5.1k → 11.9k event tokens from 25 % to 50 %) |
+| Re-compression up to level 2, and a window takes only members that *end* inside it | `memory.max_compression_level`, `_compress_window` | one summary spans at most 1,200 s (it was 1,520-2,300 s) |
+| Question set v2: 4 removed, 10 corrected; `questions.yaml` kept unchanged | `data/annotations/KbahC-QCKU8/questions_v2.yaml`, `questions.filename` | wrong references (q056), unverifiable counts (q048), missing transcript-spelling variants (q037), evidence lost by ASR (q013, q058, q074), duplicate (q066); reasons are in the file header and in `notes` |
+| Each question file is frozen separately; a later set may drop questions | `questions/manage.py` | the audited set is frozen next to the original, whose hash stays valid |
+| The judge cache is keyed by a hash of the reference answers too | `JudgeCache.judge_key` | an edited reference no longer reuses a verdict judged against the old one |
+| The four C3 ablations are enabled again | `experiment.ablations` in `configs/experiment_memory_budget.yaml` | the list was empty, so the ablations Stage 5 of the report promises had never been built |
+
+The configs now use `questions_v2.yaml` (57 test, 14 dev). To reproduce the earlier results, set
+`questions.filename: questions.yaml`.
+
 ## 1. Installation
 
 ### 1.1 System requirements

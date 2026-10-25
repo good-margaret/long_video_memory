@@ -58,7 +58,7 @@ models:
   tokenizer: auto               # budget unit: tokenizer of models.llm (approx fallback is logged)
 
 questions:
-  filename: questions.yaml      # in data/annotations/<video_id>/
+  filename: questions_v2.yaml   # in data/annotations/<video_id>/; v2 = audited set (questions.yaml kept)
   dev_size: 15                  # dev split for tuning; the rest is the test split
   numeric_rel_tol: 0.05
   min_per_type: 8
@@ -90,6 +90,9 @@ memory:                         # structured memory C3
   use_entity_resolution: true   # ablation switches (set by C3-<ablation> conditions)
   use_state_changes: true
   use_compression: true
+  compression_max_input_tokens: 1200
+  max_compression_level: 2      # one summary covers at most 300 s * 2**2 = 1200 s (3 gave 25 min)
+  structure_max_share: 0.40     # entities + relations take at most 40 % of the budget
 
 memory_input:                   # what EVERY condition receives per chunk
   speech: both                  # summary | transcript | both (the VLM summary drops names and numbers)

@@ -298,12 +298,34 @@ class StructuredMemory(MemorySystem):
             self._rel_key[key] = r.id
 
     # ------------------------------------------------------------------ 7.5 / 7.6 budget
+    STRUCTURE = (Entity, Relation)
+
+    def _structure_tokens(self) -> int:
+        return sum(self.store.tokens_of(r.id) for r in self.store.records.values()
+                   if isinstance(r, self.STRUCTURE))
+
     def _enforce_budget(self, chunk_id: int) -> None:
+        """While over budget: (1) if entities + relations exceed structure_max_share of the
+        budget, evict the lowest-priority one of them; (2) otherwise compress the oldest
+        events; (3) evict the lowest-priority record when nothing can be compressed.
+
+        Step (1) exists because entities and relations are never compressed: with
+        compression always first, they were evicted only once compression was exhausted,
+        so at a large budget they absorbed the extra space (B3: 186 relations, events no
+        larger than at B2) while events were re-compressed into 25-minute summaries."""
         # each step removes a compression candidate or a record, so the loop terminates;
         # an empty memory has 0 tokens and therefore always fits
+        cap = self.cfg.structure_max_share * self.budget
+        if self.store.tokens() <= self.budget:
+            return  # the budget is not binding yet: nothing to give up
         while self.store.tokens() > self.budget:
-            if not (self.cfg.use_compression and self._compress_oldest(chunk_id)):
+            if self._structure_tokens() > cap:
+                self._delete_lowest(chunk_id, kinds=self.STRUCTURE)
+            elif not (self.cfg.use_compression and self._compress_oldest(chunk_id)):
                 self._delete_lowest(chunk_id)
+        # a full memory keeps the share: the room freed goes to the next chunks' events
+        while self._structure_tokens() > cap:
+            self._delete_lowest(chunk_id, kinds=self.STRUCTURE)
 
     def _compress_oldest(self, chunk_id: int) -> bool:
         """Compress the oldest window at the lowest level that has one; False if nothing
@@ -326,7 +348,10 @@ class StructuredMemory(MemorySystem):
 
     def _compress_window(self, cands: list[Event], level: int, chunk_id: int) -> bool:
         t0 = cands[0].t_start
-        window = [r for r in cands if r.t_start < t0 + self.cfg.compression_window_s * 2 ** level]
+        # members must END inside the window, so a level-(L+1) summary spans at most
+        # compression_window_s * 2**L (members of level L can be long themselves)
+        end = t0 + self.cfg.compression_window_s * 2 ** level
+        window = [r for r in cands if r.t_end <= end] or cands[:1]
         group, used = [], 0
         for r in window:  # oldest first, until the prompt cap; always at least one record
             n = self.store.tokens_of(r.id)
@@ -394,17 +419,21 @@ class StructuredMemory(MemorySystem):
             return base + w.get("entity", 3.0) + w.get("refs", 0.5) * refs
         return base
 
-    def _delete_lowest(self, chunk_id: int) -> None:
+    def _delete_lowest(self, chunk_id: int, kinds: tuple[type, ...] | None = None) -> None:
         recs = list(self.store.records.values())
         refcount: dict[str, int] = {}
         for r in recs:
             for e in references(r):
                 refcount[e] = refcount.get(e, 0) + 1
         t_min = min(r.t_ref for r in recs)
-        victim = min(recs, key=lambda r: (self.priority(r, refcount, t_min), r.t_ref, r.id))
+        pool = [r for r in recs if kinds is None or isinstance(r, kinds)] or recs
+        victim = min(pool, key=lambda r: (self.priority(r, refcount, t_min), r.t_ref, r.id))
+        why = "structure share over cap, " if kinds is not None else ""
         self.store.delete(victim.id, chunk_id=chunk_id, label="evict",
-                          reason=f"lowest priority {self.priority(victim, refcount, t_min):.2f}")
+                          reason=f"{why}lowest priority {self.priority(victim, refcount, t_min):.2f}")
         self._count(f"evicted_{victim.kind}")
+        if kinds is not None:
+            self._count("structure_cap_evictions")
 
     def describe(self) -> dict[str, Any]:
         d = super().describe()

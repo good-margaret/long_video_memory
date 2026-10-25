@@ -26,7 +26,7 @@ from memvid.config import ProjectConfig
 from memvid.evaluation.scoring import normalize_text, score_answer
 from memvid.evaluation.stats import bootstrap_ci
 from memvid.experiment import load_answers
-from memvid.io import read_json, write_json, write_jsonl
+from memvid.io import read_json, sha256_json, write_json, write_jsonl
 from memvid.memory.persist import load_memory
 from memvid.memory.records import record_overlaps
 from memvid.memory.systems import parse_condition
@@ -46,7 +46,12 @@ def interval_distance(a: list[tuple[float, float]], b: list[tuple[float, float]]
 
 class JudgeCache:
     """Caches LLM-judge verdicts and applies manual overrides
-    (data/annotations/<video_id>/manual_scores.csv: qid, answer, correct)."""
+    (data/annotations/<video_id>/manual_scores.csv: qid, answer, correct).
+
+    A cached verdict is keyed by the question id, a hash of the reference answer(s) and the
+    normalised answer, so editing a reference (or the accepted answers) re-judges instead of
+    silently reusing a verdict made against the old reference. Manual overrides are keyed by
+    question id and answer only: they are decisions about one specific answer."""
 
     def __init__(self, cfg: ProjectConfig):
         self.path = cfg.video_runs_dir / "judge_cache.json"
@@ -62,6 +67,12 @@ class JudgeCache:
     @staticmethod
     def key(qid: str, answer: str) -> str:
         return f"{qid}::{normalize_text(answer)}"
+
+    @staticmethod
+    def judge_key(q, answer: str) -> str:
+        ref = sha256_json({"answer": q.answer, "accepted": list(q.accepted_answers or []),
+                           "question": q.question})[:12]
+        return f"{q.id}::{ref}::{normalize_text(answer)}"
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -90,11 +101,12 @@ def evaluate_run(cfg: ProjectConfig, rdir: Path, split: str, *, judge: Generativ
                              question=q.question)
             correct, method = s.correct, s.method
             if not correct and method == "none" and judge is not None:
-                if key not in cache.cache:
-                    cache.cache[key] = score_answer(a.answer, q.answer, q.answer_type,
-                                                    accepted=q.accepted_answers, judge=judge,
-                                                    question=q.question).correct
-                correct, method = cache.cache[key], "judge"
+                jkey = JudgeCache.judge_key(q, a.answer)
+                if jkey not in cache.cache:
+                    cache.cache[jkey] = score_answer(a.answer, q.answer, q.answer_type,
+                                                     accepted=q.accepted_answers, judge=judge,
+                                                     question=q.question).correct
+                correct, method = cache.cache[jkey], "judge"
         gt = list(q.gt_intervals)
         per_record = base != "C1"
         ranked_ids = a.retrieval_ranked_ids or a.retrieved_ids
