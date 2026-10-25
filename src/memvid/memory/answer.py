@@ -16,7 +16,7 @@ from memvid.timeutils import merge_intervals
 
 
 class _ModelAnswer(BaseModel):
-    answer: str = ""
+    answer: str = Field(default="", min_length=1)
     cited_record_ids: list[str] = Field(default_factory=list)
     confidence: Literal["low", "medium", "high"] = "low"
 

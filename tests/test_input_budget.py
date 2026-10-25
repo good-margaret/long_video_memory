@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from memvid.config import ASRConfig, load_config
 from memvid.evaluation.metrics import JudgeCache, _specific_evidence_record, interval_distance, summarize_rows
 from memvid.episodic import EvidenceCritique, fuse_chunk_rankings, query_variants
+from memvid.memory.answer import _ModelAnswer
 from memvid.memory.records import Entity, Event
 from memvid.preprocess.asr import import_srt, load_pcm_wav
 from memvid.perception.run import build_rescue_prompt
@@ -95,6 +96,12 @@ Second line
 
 
 class MetricTest(unittest.TestCase):
+    def test_empty_generated_answer_is_rejected_for_retry(self) -> None:
+        with self.assertRaises(ValidationError):
+            _ModelAnswer.model_validate(
+                {"answer": "", "cited_record_ids": [], "confidence": "low"}
+            )
+
     def test_interval_distance(self) -> None:
         self.assertEqual(interval_distance([(0, 10)], [(5, 12)]), 0)
         self.assertEqual(interval_distance([(0, 10)], [(15, 20)]), 5)
